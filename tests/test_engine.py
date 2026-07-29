@@ -18,7 +18,8 @@ def test_flag_not_found(db_session):
     result = evaluate_flag(
         db=db_session,
         flag_key="invalid_flag",
-        environment_name="development"
+        environment_name="development",
+        user_context={}
     )
 
     assert result["success"] is False
@@ -29,7 +30,8 @@ def test_enabled_flag(db_session):
     result = evaluate_flag(
         db=db_session,
         flag_key="dark_mode",
-        environment_name="development"
+        environment_name="development",
+        user_context={}
     )
 
     assert result["success"] is True
@@ -40,8 +42,26 @@ def test_disabled_flag(db_session):
     result = evaluate_flag(
         db=db_session,
         flag_key="payment_v2",
-        environment_name="development"
+        environment_name="development",
+        user_context={}
     )
 
     assert result["success"] is True
     assert result["enabled"] is False
+    
+def test_user_context(db_session):
+    user_context = {
+        "user_id": "user123",
+        "country": "India",
+        "role": "admin"
+    }
+
+    result = evaluate_flag(
+        db=db_session,
+        flag_key="dark_mode",
+        environment_name="development",
+        user_context=user_context
+    )
+
+    assert result["success"] is True
+    assert result["user_context"] == user_context
