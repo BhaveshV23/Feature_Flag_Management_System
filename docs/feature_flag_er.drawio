@@ -1,0 +1,52 @@
++--------------------+
+| ENVIRONMENTS       |
++--------------------+
+| PK id              |
+| name               |
+| description        |
+| is_active          |
+| created_at         |
+| updated_at         |
++--------------------+
+          |
+          | 1
+          |
+          | *
++--------------------+
+| FLAGS              |
++--------------------+
+| PK id              |
+| FK environment_id  |
+| key                |
+| name               |
+| description        |
+| enabled            |
+| created_at         |
+| updated_at         |
++--------------------+
+     |        |        \
+     |1       |1        \1
+     |        |          \
+     |*       |*          \*
++--------------+  +-------------------+   +----------------+
+|FLAG_VERSIONS |  |TARGETING_RULES    |   |AUDIT_LOG       |
++--------------+  +-------------------+   +----------------+
+|PK id         |  |PK id              |   |PK id           |
+|FK flag_id    |  |FK flag_id         |   |FK flag_id      |
+|version       |  |priority           |   |FK environment_id|
+|enabled       |  |rule_type          |   |actor           |
+|config        |  |operator           |   |action          |
+|created_at    |  |value              |   |old_state       |
++--------------+  |percentage         |   |new_state       |
+                  |enabled            |   |created_at      |
+                  |created_at         |   +----------------+
+                  +-------------------+
+
++---------------------------+
+| USER_GROUP_MEMBERSHIPS    |
++---------------------------+
+| PK id                     |
+| user_id                   |
+| group_name                |
+| created_at                |
++---------------------------+
