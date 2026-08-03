@@ -34,12 +34,14 @@ class Flag(Base):
 
     environment_id: Mapped[int] = mapped_column(
         ForeignKey("environments.id"),
-        nullable=False
+        nullable=False,
+        index=True
     )
 
     key: Mapped[str] = mapped_column(
         String(100),
-        nullable=False
+        nullable=False,
+        index=True
     )
 
     name: Mapped[str] = mapped_column(
