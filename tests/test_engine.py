@@ -7,7 +7,8 @@ def test_environment_not_found(db_session):
     result = evaluate_flag(
         db=db_session,
         flag_key="dark_mode",
-        environment_name="invalid"
+        environment_name="invalid",
+        user_context={}
     )
 
     assert result["success"] is False
@@ -48,6 +49,7 @@ def test_disabled_flag(db_session):
 
     assert result["success"] is True
     assert result["enabled"] is False
+    assert result["value"] == "false"   # falls back to the flag's default_value
     
 def test_user_context(db_session):
     user_context = {

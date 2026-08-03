@@ -28,18 +28,10 @@ def evaluate_flag(db: Session, flag_key: str, environment_name: str, user_contex
             "success": False,
             "message": "Feature flag not found"
         }
-    if flag.enabled:
-        return {
-            "success": True,
-            "flag": flag.key,
-            "enabled": True,
-            "value": flag.default_value,
-            "user_context": user_context
-        }
     return {
         "success": True,
         "flag": flag.key,
-        "enabled": False,
+        "enabled": flag.enabled,
         "value": flag.default_value,
         "user_context": user_context
     }
