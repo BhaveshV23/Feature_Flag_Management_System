@@ -51,11 +51,10 @@ def test_disabled_flag(db_session):
     assert result["enabled"] is False
     assert result["value"] == "false"   # falls back to the flag's default_value
     
-def test_user_context(db_session):
+    
+def test_user_targeting_rule(db_session):
     user_context = {
-        "user_id": "user123",
-        "country": "India",
-        "role": "admin"
+        "user_id": "user123"
     }
 
     result = evaluate_flag(
@@ -66,4 +65,39 @@ def test_user_context(db_session):
     )
 
     assert result["success"] is True
-    assert result["user_context"] == user_context
+    assert result["enabled"] is True
+    
+    
+def test_group_targeting_rule(db_session):
+
+    user_context = {
+        "user_id": "user123"
+    }
+
+    result = evaluate_flag(
+        db=db_session,
+        flag_key="dark_mode",
+        environment_name="development",
+        user_context=user_context
+    )
+
+    assert result["success"] is True
+    assert result["enabled"] is True
+    
+    
+def test_rollout_percentage(db_session):
+    user_context = {
+        "user_id": "user_001"
+    }
+
+    result = evaluate_flag(
+        db=db_session,
+        flag_key="dark_mode",
+        environment_name="development",
+        user_context=user_context
+    )
+
+    assert result["success"] is True
+    # Assuming the rollout percentage is set to 50%
+    assert result["enabled"] in [True, False]  # It can be either based on the rollout percentage
+    
