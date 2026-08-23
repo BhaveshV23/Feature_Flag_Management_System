@@ -1,138 +1,236 @@
+import hashlib
+import json
+
 from sqlalchemy.orm import Session
 
+from app.cache.redis_client import redis_client
 from app.models.environment import Environment
 from app.models.flag import Flag
 from app.models.targeting_rule import TargetingRule
 from app.models.user_group_membership import UserGroupMembership
-from app.cache.redis_client import redis_client
 
-import hashlib
 
-def evaluate_flag(db: Session, flag_key: str, environment_name: str, user_context: dict | None = None):
-    
-    if user_context is None:
-        user_context = {}
-    
-    # Find Environment
+def _build_cache_key(
+    environment_name: str,
+    flag_key: str,
+    user_context: dict | None = None,
+) -> str:
+    """
+    Build a cache key that is safe for user-specific evaluations.
+
+    Different users/contexts must not share the same cached evaluation.
+    """
+
+    context = user_context or {}
+
+    context_json = json.dumps(
+        context,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+    context_hash = hashlib.sha256(
+        context_json.encode("utf-8")
+    ).hexdigest()
+
+    return f"flag:{environment_name}:{flag_key}:{context_hash}"
+
+
+def _cache_result(
+    cache_key: str,
+    result: dict,
+) -> None:
+    """
+    Store the complete evaluation result in Redis.
+    """
+
+    redis_client.set(
+        cache_key,
+        json.dumps(result),
+    )
+
+
+def _get_cached_result(cache_key: str):
+    """
+    Retrieve a complete evaluation result from Redis.
+    """
+
+    cached_value = redis_client.get(cache_key)
+
+    if not cached_value:
+        return None
+
+    try:
+        return json.loads(cached_value)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def evaluate_flag(
+    db: Session,
+    flag_key: str,
+    environment_name: str,
+    user_context: dict | None = None,
+):
+    """
+    Evaluate a feature flag for a given environment and user context.
+
+    Evaluation order:
+
+    1. Environment
+    2. Flag
+    3. Redis cache
+    4. User targeting
+    5. Group targeting
+    6. Percentage rollout
+    7. Default flag state
+    """
+
+    user_context = user_context or {}
+
+    # 1. Find Environment
+
     environment = (
         db.query(Environment)
         .filter(Environment.name == environment_name)
         .first()
     )
-    
+
     if environment is None:
         return {
             "success": False,
-            "message": "Environment not found"
+            "message": "Environment not found",
         }
-      
-        
-    # Find Flag
+
+    # 2. Find Flag
+
     flag = (
         db.query(Flag)
-        .filter( 
-                Flag.key == flag_key,
-                Flag.environment_id == environment.id
+        .filter(
+            Flag.key == flag_key,
+            Flag.environment_id == environment.id,
         )
         .first()
     )
-    
+
     if flag is None:
         return {
             "success": False,
-            "message": "Feature flag not found"
+            "message": "Feature flag not found",
         }
-        
-    cache_key = f"{environment_name}:{flag_key}"
-    cached_value = redis_client.get(cache_key)
-    
-    if cached_value:
-        return {
-            "success": True,
-            "message": "Returned From Redis Cache",
-            "enabled": cached_value == "true",
-            "value": cached_value
-    }
-    
-       
-    # USER TARGETING 
-    if user_context:
-        user_id = str(user_context.get("user_id"))
-            
-        user_rule = (
+
+    # 3. Check Redis Cache
+
+    cache_key = _build_cache_key(
+        environment_name,
+        flag_key,
+        user_context,
+    )
+
+    cached_result = _get_cached_result(cache_key)
+
+    if cached_result is not None:
+        cached_result["message"] = "Returned From Redis Cache"
+        return cached_result
+
+    # Get user ID
+
+    user_id = user_context.get("user_id")
+
+    if user_id is not None:
+        user_id = str(user_id)
+
+    # 4. User Targeting
+
+    if user_id:
+
+        user_rules = (
             db.query(TargetingRule)
-            .filter(TargetingRule.user_id == user_id)
-            .first()
+            .filter(
+                TargetingRule.flag_id == flag.id,
+                TargetingRule.rule_type == "user",
+                TargetingRule.enabled.is_(True),
+            )
+            .order_by(TargetingRule.priority)
+            .all()
         )
-            
-        if user_rule:
-            rule = (db.query(TargetingRule)
-                    .filter(
-                            TargetingRule.flag_id == flag.id,
-                            TargetingRule.attribute == "group_name",
-                            TargetingRule.operator == "=",
-                            TargetingRule.value == group_rule.group_name
-                        )
-                        .first()
-                    )
-                
-            if rule:
-                redis_client.set(
-                    cache_key,
-                    str(flag.default_value).lower()
-                )
-                    
-                return{
+
+        for rule in user_rules:
+
+            if rule.operator in ("=", "==", "equals"):
+
+                rule_user_id = str(rule.value)
+
+                if user_id == rule_user_id:
+
+                    result = {
                         "success": True,
                         "message": "Matched User Targeting Rule",
                         "environment": environment.name,
                         "flag": flag.key,
-                        "enabled": True,
+                        "enabled": flag.enabled,
                         "value": flag.default_value,
-                        "user_context": user_context
+                        "user_context": user_context,
                     }
+
+                    _cache_result(cache_key, result)
+
+                    return result
                 
-    
-    # Group Targeting Rules
-    
-    if user_context:
-        user_id = str(user_context.get("user_id"))
-        
-        group_rule = (
+    # 5. Group Targeting
+
+    if user_id:
+
+        group_memberships = (
             db.query(UserGroupMembership)
-            .filter(UserGroupMembership.user_id == user_id)
-            .first()
+            .filter(
+                UserGroupMembership.user_id == user_id
+            )
+            .all()
         )
-        
-        if group_rule:
-            rule = (db.query(TargetingRule)
-                    .filter(
-                        TargetingRule.flag_id == flag.id,
-                        TargetingRule.attribute == "group_name",
-                        TargetingRule.operator == "=",
-                        TargetingRule.value == group_rule.group_name
-                    )
-                    .first()
-                )
-            
-            if rule:
-                redis_client.set(
-                    cache_key,
-                    str(flag.default_value).lower()
-                )
-                
-                return{
-                    "success": True,
-                    "message": "Matched Group Targeting Rule",
-                    "environment": environment.name,
-                    "flag": flag.key,
-                    "enabled": True,
-                    "value": flag.default_value,
-                    "user_context": user_context
-                }
 
+        user_groups = {
+            membership.group_name
+            for membership in group_memberships
+        }
 
-    # Percentage Rollout
+        if user_groups:
+
+            group_rules = (
+                db.query(TargetingRule)
+                .filter(
+                    TargetingRule.flag_id == flag.id,
+                    TargetingRule.rule_type == "group",
+                    TargetingRule.enabled.is_(True),
+                )
+                .order_by(TargetingRule.priority)
+                .all()
+            )
+
+            for rule in group_rules:
+
+                if rule.operator in ("=", "==", "equals"):
+
+                    rule_group = str(rule.value)
+
+                    if rule_group in user_groups:
+
+                        result = {
+                            "success": True,
+                            "message": "Matched Group Targeting Rule",
+                            "environment": environment.name,
+                            "flag": flag.key,
+                            "enabled": flag.enabled,
+                            "value": flag.default_value,
+                            "user_context": user_context,
+                        }
+
+                        _cache_result(cache_key, result)
+
+                        return result
+
+    # 6. Percentage Rollout
+
     if user_id:
 
         percentage_rules = (
@@ -140,12 +238,12 @@ def evaluate_flag(db: Session, flag_key: str, environment_name: str, user_contex
             .filter(
                 TargetingRule.flag_id == flag.id,
                 TargetingRule.rule_type == "percentage",
-                TargetingRule.enabled == True
+                TargetingRule.enabled.is_(True),
             )
             .order_by(TargetingRule.priority)
             .all()
         )
-        
+
         for rule in percentage_rules:
 
             percentage = rule.percentage
@@ -153,40 +251,53 @@ def evaluate_flag(db: Session, flag_key: str, environment_name: str, user_contex
             if percentage is None:
                 continue
 
-            # Create deterministic hash from user_id + flag_key
-            hash_input = f"{user_id}:{flag_key}"
+            if percentage <= 0:
+                continue
 
-            hash_value = hashlib.sha256(
-                hash_input.encode()
-            ).hexdigest()
+            if percentage >= 100:
 
-            # Convert hash into a number between 0 and 99
-            bucket = int(hash_value, 16) % 100
-
-            # User falls inside rollout percentage
-            if bucket < percentage:
-                
-                redis_client.set(
-                    cache_key,
-                    str(flag.default_value).lower()
-                )
-
-                return {
+                result = {
                     "success": True,
+                    "message": "Matched Percentage Rollout",
+                    "environment": environment.name,
                     "flag": flag.key,
-                    "enabled": True,
+                    "enabled": flag.enabled,
                     "value": flag.default_value,
-                    "user_context": user_context
+                    "user_context": user_context,
                 }
 
+                _cache_result(cache_key, result)
 
-    redis_client.set(
-        cache_key,
-        str(flag.default_value).lower()
-    )
-    
-    
-    return {
+                return result
+
+            # Deterministic hash
+            hash_input = f"{user_id}:{flag.key}"
+
+            hash_value = hashlib.sha256(
+                hash_input.encode("utf-8")
+            ).hexdigest()
+
+            bucket = int(hash_value, 16) % 100
+
+            if bucket < percentage:
+
+                result = {
+                    "success": True,
+                    "message": "Matched Percentage Rollout",
+                    "environment": environment.name,
+                    "flag": flag.key,
+                    "enabled": flag.enabled,
+                    "value": flag.default_value,
+                    "user_context": user_context,
+                }
+
+                _cache_result(cache_key, result)
+
+                return result
+
+    # 7. Default Flag Evaluation
+
+    result = {
         "success": True,
         "message": "Default Flag Evaluation",
         "environment": environment.name,
@@ -194,3 +305,7 @@ def evaluate_flag(db: Session, flag_key: str, environment_name: str, user_contex
         "enabled": flag.enabled,
         "value": flag.default_value,
     }
+
+    _cache_result(cache_key, result)
+
+    return result
