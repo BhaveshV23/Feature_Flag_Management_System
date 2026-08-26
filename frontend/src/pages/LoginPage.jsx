@@ -1,8 +1,9 @@
 import { useState } from "react";
 import "../App.css";
-import { login } from "../services/api";
+import useAuth from "../hooks/useAuth";
 
 function LoginPage({ onBack, onLogin }) {
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,8 +15,7 @@ function LoginPage({ onBack, onLogin }) {
     setIsSubmitting(true);
 
     try {
-      const result = await login(username, password);
-      localStorage.setItem("flagflow_access_token", result.access_token);
+      await login(username, password);
       onLogin();
     } catch (requestError) {
       setError(requestError.message || "Unable to sign in. Check the API connection.");

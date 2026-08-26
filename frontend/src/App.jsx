@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import "./App.css";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -9,16 +8,14 @@ import FeaturesPage from "./pages/FeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RolloutsPage from "./pages/RolloutsPage";
-
-const TOKEN_KEY = "flagflow_access_token";
+import useAuth from "./hooks/useAuth";
 
 function AppRoutes() {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem(TOKEN_KEY)));
+  const { isAuthenticated, logout } = useAuth();
 
   const signOut = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setIsAuthenticated(false);
+    logout();
     navigate("/");
   };
 
@@ -29,7 +26,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<PublicLayout><LandingPage isAuthenticated={isAuthenticated} onLogin={() => navigate("/login")} onSignOut={signOut} /></PublicLayout>} />
-      <Route path="/login" element={<PublicLayout><LoginPage onBack={() => navigate("/")} onLogin={() => { setIsAuthenticated(true); navigate("/dashboard"); }} /></PublicLayout>} />
+      <Route path="/login" element={<PublicLayout><LoginPage onBack={() => navigate("/")} onLogin={() => navigate("/dashboard")} /></PublicLayout>} />
       <Route path="/dashboard" element={requireAuthentication(<Dashboard />)} />
       <Route path="/features" element={requireAuthentication(<FeaturesPage />)} />
       <Route path="/environments" element={requireAuthentication(<EnvironmentsPage />)} />
