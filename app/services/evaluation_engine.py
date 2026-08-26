@@ -36,6 +36,45 @@ def _build_cache_key(
     return f"flag:{environment_name}:{flag_key}:{context_hash}"
 
 
+def _escape_redis_glob(value: str) -> str:
+    """Escape a literal cache namespace component for Redis glob matching."""
+
+    return (
+        value.replace("\\", "\\\\")
+        .replace("*", "\\*")
+        .replace("?", "\\?")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+    )
+
+
+def invalidate_flag_cache(environment_name: str, flag_key: str) -> int:
+    """Remove every context-specific evaluation cache entry for one flag.
+
+    Evaluation keys include a hash of the user context, so deleting a single
+    exact key cannot invalidate all decisions for a flag. ``scan_iter`` keeps
+    the operation incremental and avoids Redis' blocking ``KEYS`` command.
+    """
+
+    pattern = (
+        f"flag:{_escape_redis_glob(environment_name)}:"
+        f"{_escape_redis_glob(flag_key)}:*"
+    )
+    deleted = 0
+    batch: list[str] = []
+
+    for cache_key in redis_client.scan_iter(match=pattern, count=100):
+        batch.append(cache_key)
+        if len(batch) == 100:
+            deleted += redis_client.delete(*batch)
+            batch.clear()
+
+    if batch:
+        deleted += redis_client.delete(*batch)
+
+    return deleted
+
+
 def _cache_result(
     cache_key: str,
     result: dict,

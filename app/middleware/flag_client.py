@@ -6,6 +6,10 @@ import time
 import requests
 
 
+class FlagClientAuthenticationError(RuntimeError):
+    """Raised when a protected evaluation request has no configured token."""
+
+
 class FlagClient:
     """
     Client-side feature flag helper.
@@ -22,6 +26,7 @@ class FlagClient:
         stale_ttl: int = 60,
         timeout: int = 5,
         use_stale_cache: bool = True,
+        auth_token: str | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.environment = environment
@@ -30,6 +35,7 @@ class FlagClient:
         self.stale_ttl = stale_ttl
         self.timeout = timeout
         self.use_stale_cache = use_stale_cache
+        self.auth_token = auth_token
 
         self._cache = {}
         self._lock = threading.Lock()
@@ -160,6 +166,11 @@ class FlagClient:
         # Count this as an API/cache miss
         self._misses += 1
 
+        if not self.auth_token:
+            raise FlagClientAuthenticationError(
+                "An authentication token is required for Feature Flag API evaluation requests."
+            )
+
         try:
 
             response = requests.post(
@@ -169,6 +180,7 @@ class FlagClient:
                     "environment_name": self.environment,
                     "user_context": user_context,
                 },
+                headers={"Authorization": f"Bearer {self.auth_token}"},
                 timeout=self.timeout,
             )
 

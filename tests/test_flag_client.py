@@ -3,7 +3,7 @@ import time
 import pytest
 import requests
 
-from app.middleware.flag_client import FlagClient
+from app.middleware.flag_client import FlagClient, FlagClientAuthenticationError
 
 
 BASE_URL = "http://127.0.0.1:8000"
@@ -14,6 +14,7 @@ def create_client(
     cache_ttl=30,
     stale_ttl=60,
     use_stale_cache=True,
+    auth_token="test-token",
 ):
     return FlagClient(
         base_url=BASE_URL,
@@ -22,6 +23,7 @@ def create_client(
         stale_ttl=stale_ttl,
         timeout=2,
         use_stale_cache=use_stale_cache,
+        auth_token=auth_token,
     )
 
 
@@ -67,6 +69,64 @@ def test_cache_miss_calls_api(monkeypatch):
 
     assert stats["misses"] == 1
     assert stats["hits"] == 0
+
+
+def test_evaluation_request_sends_bearer_token(monkeypatch):
+
+    client = create_client(auth_token="jwt-token")
+    request_headers = []
+
+    def mock_post(url, **kwargs):
+        request_headers.append(kwargs["headers"])
+
+        class MockResponse:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"success": True, "enabled": True, "value": "true"}
+
+        return MockResponse()
+
+    monkeypatch.setattr(requests, "post", mock_post)
+
+    client.evaluate("dark_mode", {"user_id": "user_001"})
+
+    assert request_headers == [{"Authorization": "Bearer jwt-token"}]
+
+
+def test_missing_token_fails_before_an_api_request(monkeypatch):
+
+    client = create_client(auth_token=None)
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: pytest.fail("API should not be called"))
+
+    with pytest.raises(FlagClientAuthenticationError, match="authentication token"):
+        client.evaluate("dark_mode", {"user_id": "user_001"})
+
+
+def test_cache_hit_does_not_require_a_token(monkeypatch):
+
+    client = create_client()
+    api_calls = []
+
+    def mock_post(url, **kwargs):
+        api_calls.append(url)
+
+        class MockResponse:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"success": True, "enabled": True, "value": "true"}
+
+        return MockResponse()
+
+    monkeypatch.setattr(requests, "post", mock_post)
+    client.evaluate("dark_mode", {"user_id": "user_001"})
+    client.auth_token = None
+
+    assert client.evaluate("dark_mode", {"user_id": "user_001"})["enabled"] is True
+    assert len(api_calls) == 1
 
 
 def test_cache_hit_does_not_call_api(monkeypatch):

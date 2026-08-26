@@ -2,14 +2,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.flag import Flag
-from app.services.evaluation_engine import evaluate_flag
+from app.services.evaluation_engine import evaluate_flag, invalidate_flag_cache
 from app.schemas.evaluation import EvaluationRequest
 from app.schemas.feat_flag import FlagCreate, FlagUpdate
 from app.models.targeting_rule import TargetingRule
 from app.schemas.targeting_rule import TargetingRuleCreate, TargetingRuleUpdate
 from app.models.environment import Environment
 from app.schemas.environment import CreateEnvironment, UpdateEnvironment
-from app.cache.redis_client import redis_client
 from app.core.security import get_current_user
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -61,6 +60,7 @@ def create_flag(
     db.add(flag)
     db.commit()
     db.refresh(flag)
+    invalidate_flag_cache(flag.environment.name, flag.key)
     
     return flag
 
@@ -81,6 +81,9 @@ def update_flag(
             "message": "Feature flag not found"
         }
         
+    previous_environment_name = flag.environment.name
+    previous_key = flag.key
+
     flag.key = request.key
     flag.type = request.type
     flag.default_value = request.default_value
@@ -89,9 +92,10 @@ def update_flag(
     flag.owner_team = request.owner_team
     
     db.commit()
-    cache_key = f"{flag.environment.name}:{flag.key}"
-    redis_client.delete(cache_key)
     db.refresh(flag)
+    invalidate_flag_cache(previous_environment_name, previous_key)
+    if (previous_environment_name, previous_key) != (flag.environment.name, flag.key):
+        invalidate_flag_cache(flag.environment.name, flag.key)
     
     return flag
     
@@ -112,10 +116,11 @@ def delete_flag(
             "message": "Feature flag not found"
         }
         
+    environment_name = flag.environment.name
+    flag_key = flag.key
     db.delete(flag)
     db.commit()
-    cache_key = f"{flag.environment.name}:{flag.key}"
-    redis_client.delete(cache_key)
+    invalidate_flag_cache(environment_name, flag_key)
 
     return {
         "message": "Feature flag deleted successfully",
@@ -167,6 +172,9 @@ def create_targeting_rule(
     db.add(rule)
     db.commit()
     db.refresh(rule)
+    flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
+    if flag is not None:
+        invalidate_flag_cache(flag.environment.name, flag.key)
 
     return rule
 
@@ -187,6 +195,13 @@ def update_targeting_rule(
             "message": "Targeting rule not found"
         }
         
+    previous_flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
+    previous_cache_namespace = (
+        (previous_flag.environment.name, previous_flag.key)
+        if previous_flag is not None
+        else None
+    )
+
     rule.flag_id = request.flag_id
     rule.priority = request.priority
     rule.rule_type = request.rule_type
@@ -197,6 +212,13 @@ def update_targeting_rule(
     
     db.commit()
     db.refresh(rule)
+    if previous_cache_namespace is not None:
+        invalidate_flag_cache(*previous_cache_namespace)
+    current_flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
+    if current_flag is not None:
+        current_cache_namespace = (current_flag.environment.name, current_flag.key)
+        if current_cache_namespace != previous_cache_namespace:
+            invalidate_flag_cache(*current_cache_namespace)
     
     return rule
 
@@ -217,8 +239,16 @@ def delete_targeting_rule(
             "message": "Targeting rule not found"
         }
         
+    flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
+    cache_namespace = (
+        (flag.environment.name, flag.key)
+        if flag is not None
+        else None
+    )
     db.delete(rule)
     db.commit()
+    if cache_namespace is not None:
+        invalidate_flag_cache(*cache_namespace)
     
     return {
         "message": "Targeting rule deleted successfully",
