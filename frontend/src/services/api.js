@@ -88,3 +88,11 @@ export function deleteFlag(flagId) {
     method: "DELETE",
   });
 }
+
+export function getEnvironments() {
+  return authenticatedRequest("/environment");
+}
+
+export function getEnvironment(environmentId) {
+  return authenticatedRequest(`/environment/${environmentId}`);
+}
