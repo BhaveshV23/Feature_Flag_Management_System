@@ -8,6 +8,10 @@ html {
   scroll-behavior: smooth;
 }
 
+section[id] {
+  scroll-margin-top: 24px;
+}
+
 body {
   font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
   background: #070b14;
@@ -133,12 +137,47 @@ a {
   font-size: 14px;
 }
 
+.navbar nav button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+}
+
 .navbar nav a {
   transition: 0.25s;
 }
 
 .navbar nav a:hover {
   color: white;
+}
+
+.navbar nav button:hover {
+  color: white;
+}
+
+.mobile-login-link {
+  display: none;
+}
+
+.menu-toggle {
+  display: none;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  cursor: pointer;
+}
+
+.menu-toggle span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  margin: 4px auto;
+  background: #d6daea;
 }
 
 .nav-buttons {
@@ -286,6 +325,8 @@ a {
 
 .dashboard-window {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -644,7 +685,43 @@ footer {
 /* RESPONSIVE */
 
 @media (max-width: 900px) {
+  .navbar {
+    position: relative;
+  }
+
+  .menu-toggle {
+    display: block;
+    margin-left: auto;
+    margin-right: 10px;
+  }
+
   .navbar nav {
+    display: none;
+    position: absolute;
+    z-index: 5;
+    top: 70px;
+    right: 0;
+    width: min(220px, calc(100vw - 32px));
+    padding: 8px;
+    flex-direction: column;
+    gap: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    background: #101522;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .navbar nav.is-open {
+    display: flex;
+  }
+
+  .navbar nav button {
+    min-height: 42px;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .navbar nav .mobile-login-link {
     display: none;
   }
 
@@ -652,6 +729,7 @@ footer {
     grid-template-columns: 1fr;
     gap: 20px;
     padding-top: 50px;
+    min-height: auto;
   }
 
   .hero-content {
@@ -686,8 +764,17 @@ footer {
     display: none;
   }
 
+  .navbar nav .mobile-login-link {
+    display: block;
+  }
+
+  .nav-buttons .primary {
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+
   .hero h1 {
-    font-size: 45px;
+    font-size: clamp(36px, 12vw, 45px);
     letter-spacing: -2px;
   }
 
@@ -699,6 +786,23 @@ footer {
     flex-direction: column;
   }
 
+  .hero-buttons .btn {
+    width: 100%;
+  }
+
+  .dashboard {
+    width: 100%;
+  }
+
+  .dashboard-body {
+    padding: 16px;
+  }
+
+  .dashboard-footer {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
   .stats {
     gap: 20px;
     flex-wrap: wrap;
@@ -706,6 +810,28 @@ footer {
 
   .features-grid {
     grid-template-columns: 1fr;
+  }
+
+  .features-section,
+  .workflow {
+    padding: 80px 0;
+  }
+
+  .feature-card {
+    min-height: 0;
+  }
+
+  .cta {
+    padding: 20px 0 70px;
+  }
+
+  .cta-box {
+    padding: 60px 20px;
+  }
+
+  .cta h2 {
+    font-size: clamp(32px, 10vw, 45px);
+    letter-spacing: -1px;
   }
 
   .steps {
@@ -722,5 +848,43 @@ footer {
     flex-direction: column;
     gap: 20px;
     text-align: center;
+  }
+
+  .footer-main p {
+    max-width: 100%;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .navbar {
+    width: 94%;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .menu-toggle {
+    margin-right: 6px;
+  }
+
+  .nav-buttons .primary {
+    padding-left: 9px;
+    padding-right: 9px;
+    font-size: 12px;
+  }
+
+  .dashboard-footer {
+    font-size: 9px;
   }
 }
