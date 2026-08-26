@@ -16,24 +16,29 @@ function AppRoutes() {
 
   const signOut = () => {
     logout();
-    navigate("/");
+    window.location.replace("/");
   };
-
-  const requireAuthentication = (page) => (
-    isAuthenticated ? <DashboardLayout onSignOut={signOut}>{page}</DashboardLayout> : <Navigate to="/login" replace />
-  );
 
   return (
     <Routes>
       <Route path="/" element={<PublicLayout><LandingPage isAuthenticated={isAuthenticated} onLogin={() => navigate("/login")} onSignOut={signOut} /></PublicLayout>} />
       <Route path="/login" element={<PublicLayout><LoginPage onBack={() => navigate("/")} onLogin={() => navigate("/dashboard")} /></PublicLayout>} />
-      <Route path="/dashboard" element={requireAuthentication(<Dashboard />)} />
-      <Route path="/features" element={requireAuthentication(<FeaturesPage />)} />
-      <Route path="/environments" element={requireAuthentication(<EnvironmentsPage />)} />
-      <Route path="/rollouts" element={requireAuthentication(<RolloutsPage />)} />
+      <Route element={isAuthenticated ? <DashboardLayout onSignOut={signOut} /> : <Navigate to="/login" replace />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/environments" element={<EnvironmentsPage />} />
+        <Route path="/rollouts" element={<RolloutsPage />} />
+        <Route path="/analytics" element={<PlaceholderPage title="Analytics" />} />
+        <Route path="/audit-logs" element={<PlaceholderPage title="Audit Logs" />} />
+        <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function PlaceholderPage({ title }) {
+  return <section className="dashboard-placeholder"><p className="dashboard-eyebrow">Coming next</p><h2>{title}</h2><p>This workspace is reserved for a future dashboard module.</p></section>;
 }
 
 function App() {
