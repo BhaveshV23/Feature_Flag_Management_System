@@ -10,8 +10,9 @@ from app.schemas.targeting_rule import TargetingRuleCreate, TargetingRuleUpdate
 from app.models.environment import Environment
 from app.schemas.environment import CreateEnvironment, UpdateEnvironment
 from app.cache.redis_client import redis_client
+from app.core.security import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Flags
 
