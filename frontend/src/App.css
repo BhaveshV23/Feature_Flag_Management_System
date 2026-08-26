@@ -1519,6 +1519,10 @@ body:has(.dashboard-layout) {
 
 .create-flag-button {
   flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.create-flag-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -1787,5 +1791,225 @@ body:has(.dashboard-layout) {
     display: grid;
     grid-template-columns: 1fr;
     gap: 3px;
+  }
+}
+
+/* CREATE FLAG MODAL */
+
+.feature-modal-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 5, 12, 0.72);
+}
+
+.feature-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: #101725;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+}
+
+.feature-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.feature-modal-header h2 {
+  margin-top: 9px;
+  font-size: 28px;
+  letter-spacing: -0.7px;
+}
+
+.feature-modal-header p:last-child {
+  margin-top: 8px;
+  color: #8b95ab;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.feature-modal-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #9ca5bb;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.feature-modal-close:hover {
+  color: #f5f7ff;
+}
+
+.feature-flag-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.form-field {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.form-field.full-width,
+.form-submit-error,
+.enabled-field,
+.feature-form-actions {
+  grid-column: 1 / -1;
+}
+
+.form-field label,
+.enabled-field {
+  color: #d6daea;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  outline: none;
+  color: #f5f7ff;
+  background: rgba(255, 255, 255, 0.045);
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: #7c8dff;
+  box-shadow: 0 0 0 3px rgba(124, 141, 255, 0.14);
+}
+
+#create-environment {
+  color-scheme: dark;
+}
+
+#create-environment option {
+  color: #f5f7ff;
+  background: #151c2c;
+}
+
+.form-field input[aria-invalid="true"],
+.form-field select[aria-invalid="true"],
+.form-field textarea[aria-invalid="true"] {
+  border-color: #e98282;
+}
+
+.form-field-error {
+  color: #ff9d9d;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.form-submit-error {
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 130, 130, 0.24);
+  border-radius: 8px;
+  color: #ffb2b2;
+  background: rgba(255, 100, 100, 0.08);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.enabled-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+}
+
+.enabled-field input {
+  width: 16px;
+  height: 16px;
+  accent-color: #6dffb0;
+}
+
+.feature-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.feature-form-actions .btn:disabled,
+.feature-modal-close:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.feature-success-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 11px 13px;
+  border: 1px solid rgba(109, 255, 176, 0.2);
+  border-radius: 8px;
+  color: #6dffb0;
+  background: rgba(109, 255, 176, 0.07);
+  font-size: 12px;
+}
+
+.feature-success-message button {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (max-width: 560px) {
+  .feature-modal-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .feature-modal {
+    max-height: 94vh;
+    padding: 24px 18px;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .feature-flag-form {
+    grid-template-columns: 1fr;
+  }
+
+  .form-field.full-width,
+  .form-submit-error,
+  .enabled-field,
+  .feature-form-actions {
+    grid-column: auto;
+  }
+
+  .feature-form-actions {
+    justify-content: stretch;
+  }
+
+  .feature-form-actions .btn {
+    flex: 1;
   }
 }

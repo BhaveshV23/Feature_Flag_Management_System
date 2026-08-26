@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { getEnvironments, getFlags } from "../services/api";
+import { createFlag, getEnvironments, getFlags } from "../services/api";
+import FeatureFlagForm from "../components/features/FeatureFlagForm";
 import FeatureFlagFilters from "../components/features/FeatureFlagFilters";
 import FeatureFlagSummary from "../components/features/FeatureFlagSummary";
 import FeatureFlagTable from "../components/features/FeatureFlagTable";
@@ -12,6 +13,10 @@ function FeaturesPage() {
   const [status, setStatus] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const loadData = async () => {
     setIsLoading(true);
@@ -58,6 +63,21 @@ function FeaturesPage() {
     });
   }, [environmentFlags, searchTerm, status]);
 
+  const handleCreateFlag = async (flagData) => {
+    setIsCreating(true);
+    setCreateError("");
+    try {
+      await createFlag(flagData);
+      await loadData();
+      setIsFormOpen(false);
+      setSuccessMessage(`Flag created in ${selectedEnvironment?.name || "the selected environment"}.`);
+    } catch (requestError) {
+      setCreateError(requestError.message || "The flag could not be created.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (isLoading) {
     return <section className="feature-page-state" role="status"><div className="dashboard-state-mark" aria-hidden="true">◌</div><h2>Loading feature flags</h2><p>Fetching flags and environments from the workspace.</p></section>;
   }
@@ -75,9 +95,10 @@ function FeaturesPage() {
 
   return (
     <section className="features-page">
+      {successMessage && <div className="feature-success-message" role="status">{successMessage}<button aria-label="Dismiss success message" onClick={() => setSuccessMessage("")} type="button">×</button></div>}
       <div className="feature-page-header">
         <div><p className="dashboard-eyebrow">Release configuration</p><h2>Feature Flags</h2><p>Review flag state and release configuration across each environment.</p></div>
-        <button className="btn primary create-flag-button" disabled title="Flag creation will be available in a future update" type="button">+ Create Flag</button>
+        <button className="btn primary create-flag-button" onClick={() => { setCreateError(""); setIsFormOpen(true); }} type="button">+ Create Flag</button>
       </div>
       <FeatureFlagFilters environments={environments} selectedEnvironmentId={selectedEnvironmentId} onEnvironmentChange={setSelectedEnvironmentId} searchTerm={searchTerm} onSearchChange={setSearchTerm} status={status} onStatusChange={setStatus} />
       <div className="selected-environment-note">Viewing <strong>{selectedEnvironment?.name || "selected environment"}</strong> · Summary reflects current search and status filters.</div>
@@ -87,6 +108,7 @@ function FeaturesPage() {
       ) : filteredFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No matching flags</h3><p>Try a different search term or status filter.</p></div>
       ) : <FeatureFlagTable flags={filteredFlags} />}
+      {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
     </section>
   );
 }
