@@ -60,3 +60,31 @@ export async function login(username, password) {
   });
   return parseResponse(response);
 }
+
+export function getFlags() {
+  return authenticatedRequest("/flags");
+}
+
+export function getFlag(flagId) {
+  return authenticatedRequest(`/flags/${flagId}`);
+}
+
+export function createFlag(flagData) {
+  return authenticatedRequest("/flags", {
+    method: "POST",
+    body: flagData,
+  });
+}
+
+export function updateFlag(flagId, flagData) {
+  return authenticatedRequest(`/flags/${flagId}`, {
+    method: "PUT",
+    body: flagData,
+  });
+}
+
+export function deleteFlag(flagId) {
+  return authenticatedRequest(`/flags/${flagId}`, {
+    method: "DELETE",
+  });
+}
