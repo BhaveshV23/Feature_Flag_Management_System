@@ -1711,9 +1711,16 @@ body:has(.dashboard-layout) {
   border-radius: 7px;
   color: #69738a;
   background: rgba(255, 255, 255, 0.03);
-  cursor: not-allowed;
+  cursor: pointer;
   font-size: 10px;
   white-space: nowrap;
+}
+
+.table-action:hover,
+.table-action:focus-visible {
+  border-color: rgba(124, 141, 255, 0.6);
+  color: #dfe3ff;
+  background: rgba(124, 141, 255, 0.1);
 }
 
 .feature-empty-state,
@@ -1982,6 +1989,94 @@ body:has(.dashboard-layout) {
   line-height: 1;
 }
 
+/* FLAG DETAILS */
+
+.feature-details-modal {
+  width: min(720px, 100%);
+}
+
+.flag-details-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.flag-details-hero h2 {
+  margin-top: 8px;
+  font-size: 26px;
+}
+
+.flag-details-hero code,
+.flag-detail-row code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.flag-details-hero code {
+  display: inline-block;
+  margin-top: 8px;
+  color: #8b95ab;
+  font-size: 11px;
+}
+
+.flag-details-section {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.flag-details-section h3 {
+  font-size: 13px;
+}
+
+.flag-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin: 18px 0 0;
+}
+
+.flag-detail-row { min-width: 0; }
+.flag-detail-row dt { color: #737d94; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.flag-detail-row dd { margin: 7px 0 0; color: #d6daea; font-size: 12px; line-height: 1.6; word-break: break-word; }
+.flag-detail-description { display: block; max-width: 540px; }
+
+.flag-details-section:first-of-type .flag-detail-row:last-child { grid-column: 1 / -1; }
+
+.flag-details-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.flag-details-submit-error {
+  margin-top: 20px;
+}
+
+.btn.danger { color: #ffc1c1; border-color: rgba(255, 130, 130, 0.32); background: rgba(255, 100, 100, 0.1); }
+.btn.danger:hover { background: rgba(255, 100, 100, 0.17); }
+
+.flag-details-state {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: #8b95ab;
+  text-align: center;
+}
+
+.flag-details-state h3 { color: #f5f7ff; font-size: 18px; }
+.flag-details-state p { max-width: 420px; margin: 0; line-height: 1.6; }
+.details-spinner { width: 25px; height: 25px; border: 3px solid rgba(124, 141, 255, 0.2); border-top-color: #aeb2ff; border-radius: 50%; animation: flag-spin 0.8s linear infinite; }
+.edit-flag-note { grid-column: 1 / -1; margin: -4px 0 0; color: #737d94; font-size: 11px; line-height: 1.5; }
+
+@keyframes flag-spin { to { transform: rotate(360deg); } }
+
 @media (max-width: 560px) {
   .feature-modal-backdrop {
     align-items: end;
@@ -2011,5 +2106,21 @@ body:has(.dashboard-layout) {
 
   .feature-form-actions .btn {
     flex: 1;
+  }
+
+  .flag-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .flag-details-section:first-of-type .flag-detail-row:last-child {
+    grid-column: auto;
+  }
+
+  .flag-details-actions {
+    flex-direction: column-reverse;
+  }
+
+  .flag-details-actions .btn {
+    width: 100%;
   }
 }

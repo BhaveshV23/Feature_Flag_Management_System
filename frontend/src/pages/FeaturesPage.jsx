@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFlag, getEnvironments, getFlags } from "../services/api";
+import { createFlag, getEnvironments, getFlag, getFlags, updateFlag } from "../services/api";
+import FeatureFlagDetailsModal from "../components/features/FeatureFlagDetailsModal";
+import FeatureFlagEditForm from "../components/features/FeatureFlagEditForm";
 import FeatureFlagForm from "../components/features/FeatureFlagForm";
 import FeatureFlagFilters from "../components/features/FeatureFlagFilters";
 import FeatureFlagSummary from "../components/features/FeatureFlagSummary";
@@ -17,6 +19,14 @@ function FeaturesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsFlag, setDetailsFlag] = useState(null);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState("");
+  const [selectedFlagId, setSelectedFlagId] = useState(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -78,6 +88,65 @@ function FeaturesPage() {
     }
   };
 
+  const loadFlagDetails = async (flagId) => {
+    setIsDetailsLoading(true);
+    setDetailsError("");
+    try {
+      const flag = await getFlag(flagId);
+      if (!flag) throw new Error("This flag no longer exists.");
+      setDetailsFlag(flag);
+    } catch (requestError) {
+      setDetailsError(requestError.message || "Unable to load flag details.");
+    } finally {
+      setIsDetailsLoading(false);
+    }
+  };
+
+  const openDetails = (flagId) => {
+    setSelectedFlagId(flagId);
+    setDetailsFlag(null);
+    setUpdateError("");
+    setIsDetailsOpen(true);
+    loadFlagDetails(flagId);
+  };
+
+  const closeDetails = () => {
+    if (isUpdating) return;
+    setIsDetailsOpen(false);
+    setDetailsFlag(null);
+    setDetailsError("");
+    setSelectedFlagId(null);
+  };
+
+  const refreshUpdatedFlag = async (flagId) => {
+    const [flag, flagResult] = await Promise.all([getFlag(flagId), getFlags()]);
+    if (!flag) throw new Error("The flag could not be found after saving.");
+    setDetailsFlag(flag);
+    setFlags(Array.isArray(flagResult) ? flagResult : []);
+    return flag;
+  };
+
+  const handleUpdateFlag = async (payload, successText, closeEdit = true) => {
+    if (!detailsFlag || isUpdating) return;
+    setIsUpdating(true);
+    setUpdateError("");
+    try {
+      await updateFlag(detailsFlag.id, payload);
+      await refreshUpdatedFlag(detailsFlag.id);
+      if (closeEdit) {
+        setIsEditOpen(false);
+        setIsDetailsOpen(true);
+      }
+      setSuccessMessage(successText);
+    } catch (requestError) {
+      setUpdateError(requestError.message || "The flag could not be updated.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const buildUpdatePayload = (flag, enabled = flag.enabled) => ({ key: flag.key, type: flag.type, default_value: flag.default_value ?? "", enabled, description: flag.description ?? "", owner_team: flag.owner_team ?? "" });
+
   if (isLoading) {
     return <section className="feature-page-state" role="status"><div className="dashboard-state-mark" aria-hidden="true">◌</div><h2>Loading feature flags</h2><p>Fetching flags and environments from the workspace.</p></section>;
   }
@@ -107,8 +176,10 @@ function FeaturesPage() {
         <div className="feature-empty-state"><h3>No flags in this environment</h3><p>{selectedEnvironment?.name || "This environment"} does not have any feature flags yet.</p></div>
       ) : filteredFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No matching flags</h3><p>Try a different search term or status filter.</p></div>
-      ) : <FeatureFlagTable flags={filteredFlags} />}
+      ) : <FeatureFlagTable flags={filteredFlags} onViewDetails={openDetails} />}
       {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
+      {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} />}
+      {isEditOpen && detailsFlag && <FeatureFlagEditForm flag={detailsFlag} isSubmitting={isUpdating} submitError={updateError} onClose={() => { if (!isUpdating) { setIsEditOpen(false); setIsDetailsOpen(true); } }} onSubmit={(payload) => handleUpdateFlag(payload, "Flag changes saved.")} />}
     </section>
   );
 }

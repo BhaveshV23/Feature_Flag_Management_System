@@ -4,7 +4,7 @@ function formatUpdatedAt(value) {
   return Number.isNaN(date.getTime()) ? "Not available" : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-function FeatureFlagTable({ flags }) {
+function FeatureFlagTable({ flags, onViewDetails }) {
   return (
     <div className="feature-table-wrap">
       <table className="feature-table">
@@ -19,7 +19,7 @@ function FeatureFlagTable({ flags }) {
               <td>{flag.owner_team || "Unassigned"}</td>
               <td><span className="flag-default-value" title={flag.default_value ?? "Not set"}>{flag.default_value ?? "Not set"}</span></td>
               <td>{formatUpdatedAt(flag.updated_at)}</td>
-              <td><button className="table-action" disabled title="Flag details will be available in a future update" type="button">View details</button></td>
+              <td><button className="table-action" aria-label={`View details for ${flag.name || flag.key}`} onClick={() => onViewDetails(flag.id)} type="button">View details</button></td>
             </tr>
           ))}
         </tbody>
