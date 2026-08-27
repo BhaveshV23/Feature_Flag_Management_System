@@ -1,3 +1,5 @@
+import fnmatch
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -10,6 +12,37 @@ from app.database.base import Base
 import app.models as models  # noqa: F401
 from app.models.environment import Environment
 from app.models.flag import Flag
+
+
+class FakeRedis:
+    """Minimal isolated cache for backend tests without a Redis service."""
+
+    def __init__(self):
+        self.values = {}
+
+    def get(self, key):
+        return self.values.get(key)
+
+    def set(self, key, value):
+        self.values[key] = value
+
+    def scan_iter(self, match=None, count=None):
+        yield from [key for key in list(self.values) if fnmatch.fnmatchcase(key, match)]
+
+    def delete(self, *keys):
+        deleted = 0
+        for key in keys:
+            if key in self.values:
+                del self.values[key]
+                deleted += 1
+        return deleted
+
+
+@pytest.fixture(autouse=True)
+def isolated_evaluation_cache(monkeypatch):
+    from app.services import evaluation_engine
+
+    monkeypatch.setattr(evaluation_engine, "redis_client", FakeRedis())
 
 
 @pytest.fixture()

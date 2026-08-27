@@ -9,6 +9,7 @@ from app.api import auth as auth_api
 from app.database import session as database_session
 from app.main import app
 from app.models.user import User
+from app.models.audit_log import AuditLog
 from app.services.auth_service import create_access_token, hash_password
 from app.database.config import settings
 
@@ -140,7 +141,7 @@ def test_flags_accepts_valid_token(client):
     assert isinstance(response["json"], list)
 
 
-def test_create_flag_accepts_valid_token(client):
+def test_create_flag_accepts_valid_token(client, db_session):
     token = create_access_token({"sub": "admin", "user_id": 1})
 
     response = client(
@@ -161,6 +162,9 @@ def test_create_flag_accepts_valid_token(client):
 
     assert response["status"] == 200
     assert response["json"]["key"] == "new_flag"
+    audit_record = db_session.query(AuditLog).order_by(AuditLog.id.desc()).first()
+    assert audit_record.action == "CREATE"
+    assert audit_record.actor == "admin"
 
 
 def test_evaluation_requires_authentication(client):

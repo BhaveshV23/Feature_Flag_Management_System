@@ -5,6 +5,7 @@ from app.schemas.feat_flag import FlagUpdate
 from app.schemas.targeting_rule import TargetingRuleCreate
 from app.services import evaluation_engine
 from app.services.evaluation_engine import evaluate_flag
+from app.core.security import AuthenticatedUser
 
 
 class FakeRedis:
@@ -50,6 +51,7 @@ def test_flag_update_invalidates_all_context_specific_evaluations(db_session, mo
             owner_team=flag.owner_team,
         ),
         db_session,
+        AuthenticatedUser(user_id=1, username="tester"),
     )
 
     second = evaluate_flag(db_session, "dark_mode", "development", {"user_id": "one"})
@@ -75,6 +77,7 @@ def test_targeting_rule_change_invalidates_only_its_flag_cache(db_session, monke
             value="targeted-user",
         ),
         db_session,
+        AuthenticatedUser(user_id=1, username="tester"),
     )
 
     changed = evaluate_flag(db_session, "dark_mode", "development", context)

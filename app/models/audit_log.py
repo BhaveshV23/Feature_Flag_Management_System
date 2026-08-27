@@ -22,9 +22,9 @@ class AuditLog(Base):
         index=True,
     )
 
-    flag_id: Mapped[int] = mapped_column(
-        ForeignKey("flags.id"),
-        nullable=False,
+    flag_id: Mapped[int | None] = mapped_column(
+        ForeignKey("flags.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     environment_id: Mapped[int] = mapped_column(

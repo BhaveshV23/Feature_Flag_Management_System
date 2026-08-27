@@ -9,7 +9,8 @@ from app.models.targeting_rule import TargetingRule
 from app.schemas.targeting_rule import TargetingRuleCreate, TargetingRuleUpdate
 from app.models.environment import Environment
 from app.schemas.environment import CreateEnvironment, UpdateEnvironment
-from app.core.security import get_current_user
+from app.core.security import AuthenticatedUser, get_current_user
+from app.services.audit_service import create_audit_log, flag_to_dict, targeting_rule_to_dict
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -45,7 +46,8 @@ def evaluate(
 @router.post("/flags")
 def create_flag(
     request: FlagCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     flag = Flag(
         environment_id=request.environment_id,
@@ -58,6 +60,8 @@ def create_flag(
         owner_team=request.owner_team        
     )
     db.add(flag)
+    db.flush()
+    create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action="CREATE", new_state=flag_to_dict(flag))
     db.commit()
     db.refresh(flag)
     invalidate_flag_cache(flag.environment.name, flag.key)
@@ -69,7 +73,8 @@ def create_flag(
 def update_flag(
     flag_id: int,
     request: FlagUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     flag = (db.query(Flag)
             .filter(Flag.id == flag_id)
@@ -83,6 +88,7 @@ def update_flag(
         
     previous_environment_name = flag.environment.name
     previous_key = flag.key
+    old_state = flag_to_dict(flag)
 
     flag.key = request.key
     flag.type = request.type
@@ -90,7 +96,10 @@ def update_flag(
     flag.enabled = request.enabled
     flag.description = request.description
     flag.owner_team = request.owner_team
-    
+    db.flush()
+    new_state = flag_to_dict(flag)
+    action = "UPDATE" if old_state["enabled"] == new_state["enabled"] else ("ENABLE" if new_state["enabled"] else "DISABLE")
+    create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action=action, old_state=old_state, new_state=new_state)
     db.commit()
     db.refresh(flag)
     invalidate_flag_cache(previous_environment_name, previous_key)
@@ -103,7 +112,8 @@ def update_flag(
 @router.delete("/flags/{flag_id}")
 def delete_flag(
     flag_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     flag = (
         db.query(Flag)
@@ -118,6 +128,7 @@ def delete_flag(
         
     environment_name = flag.environment.name
     flag_key = flag.key
+    create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action="DELETE", old_state=flag_to_dict(flag))
     db.delete(flag)
     db.commit()
     invalidate_flag_cache(environment_name, flag_key)
@@ -157,7 +168,8 @@ def get_targeting_rules_by_id(
 @router.post("/targeting-rules")
 def create_targeting_rule(
     request: TargetingRuleCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     rule = TargetingRule(
         flag_id=request.flag_id,
@@ -169,7 +181,11 @@ def create_targeting_rule(
         enabled=request.enabled
     )
 
+    flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
     db.add(rule)
+    db.flush()
+    if flag is not None:
+        create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action="TARGETING_RULE_CREATE", new_state=targeting_rule_to_dict(rule, flag.environment_id))
     db.commit()
     db.refresh(rule)
     flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
@@ -183,7 +199,8 @@ def create_targeting_rule(
 def update_targeting_rule(
     rule_id: int,
     request: TargetingRuleUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     rule = (db.query(TargetingRule)
             .filter(TargetingRule.id == rule_id)
@@ -201,6 +218,8 @@ def update_targeting_rule(
         if previous_flag is not None
         else None
     )
+    old_state = targeting_rule_to_dict(rule, previous_flag.environment_id) if previous_flag is not None else None
+    current_flag = db.query(Flag).filter(Flag.id == request.flag_id).first()
 
     rule.flag_id = request.flag_id
     rule.priority = request.priority
@@ -208,13 +227,14 @@ def update_targeting_rule(
     rule.operator = request.operator
     rule.value = request.value
     rule.percentage = request.percentage
-    rule.enabled = request.enabled   
-    
+    rule.enabled = request.enabled
+    db.flush()
+    if current_flag is not None:
+        create_audit_log(db, flag_id=current_flag.id, environment_id=current_flag.environment_id, actor=current_user.username, action="TARGETING_RULE_UPDATE", old_state=old_state, new_state=targeting_rule_to_dict(rule, current_flag.environment_id))
     db.commit()
     db.refresh(rule)
     if previous_cache_namespace is not None:
         invalidate_flag_cache(*previous_cache_namespace)
-    current_flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
     if current_flag is not None:
         current_cache_namespace = (current_flag.environment.name, current_flag.key)
         if current_cache_namespace != previous_cache_namespace:
@@ -226,7 +246,8 @@ def update_targeting_rule(
 @router.delete("/targeting-rules/{rule_id}")
 def delete_targeting_rule(
     rule_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     rule = (
         db.query(TargetingRule)
@@ -245,6 +266,8 @@ def delete_targeting_rule(
         if flag is not None
         else None
     )
+    if flag is not None:
+        create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action="TARGETING_RULE_DELETE", old_state=targeting_rule_to_dict(rule, flag.environment_id))
     db.delete(rule)
     db.commit()
     if cache_namespace is not None:
