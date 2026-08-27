@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.flag import Flag
@@ -296,18 +297,16 @@ def get_environment_by_id(
     environment_id: int,
     db: Session = Depends(get_db)
 ):
-    environment_id = (
+    environment = (
         db.query(Environment)
         .filter(Environment.id == environment_id)
         .first()
     )
     
-    if environment_id is None:
-        return{
-            "message": "Environment not found."
-        }
+    if environment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Environment not found.")
         
-    return environment_id
+    return environment
 
 
 @router.post("/environment")
@@ -322,7 +321,11 @@ def create_environment(
     )
     
     db.add(environment)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An environment with this name already exists.") from None
     db.refresh(environment)
     
     return environment
@@ -340,16 +343,30 @@ def update_environment(
                    )
     
     if environment is None:
-        return {
-            "message": "Environment not found."
-        }
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Environment not found.")
+
+    if request.name != environment.name and db.query(Environment).filter(
+        Environment.name == request.name,
+        Environment.id != environment_id,
+    ).first() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An environment with this name already exists.")
+
+    old_environment_name = environment.name
+    flag_keys = [flag.key for flag in environment.flags]
         
     environment.name=request.name
     environment.description=request.description
     environment.is_active=request.is_active
     
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An environment with this name already exists.") from None
     db.refresh(environment)
+
+    for flag_key in flag_keys:
+        invalidate_flag_cache_safely(old_environment_name, flag_key)
     
     return environment
 
@@ -366,9 +383,14 @@ def delete_environment(
     )
     
     if environment is None:
-        return {
-            "message": "Environment not found."
-        }
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Environment not found.")
+
+    if environment.flags:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Environment cannot be deleted while it contains feature flags.")
+
+    from app.models.audit_log import AuditLog
+    if db.query(AuditLog).filter(AuditLog.environment_id == environment_id).first() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Environment cannot be deleted because audit history references it.")
         
     db.delete(environment)
     db.commit()
