@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.flag import Flag
-from app.services.evaluation_engine import evaluate_flag, invalidate_flag_cache
+from app.services.evaluation_engine import evaluate_flag, invalidate_flag_cache_safely
 from app.schemas.evaluation import EvaluationRequest
 from app.schemas.feat_flag import FlagCreate, FlagUpdate
 from app.models.targeting_rule import TargetingRule
@@ -64,7 +64,7 @@ def create_flag(
     create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action="CREATE", new_state=flag_to_dict(flag))
     db.commit()
     db.refresh(flag)
-    invalidate_flag_cache(flag.environment.name, flag.key)
+    invalidate_flag_cache_safely(flag.environment.name, flag.key)
     
     return flag
 
@@ -102,9 +102,9 @@ def update_flag(
     create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action=action, old_state=old_state, new_state=new_state)
     db.commit()
     db.refresh(flag)
-    invalidate_flag_cache(previous_environment_name, previous_key)
+    invalidate_flag_cache_safely(previous_environment_name, previous_key)
     if (previous_environment_name, previous_key) != (flag.environment.name, flag.key):
-        invalidate_flag_cache(flag.environment.name, flag.key)
+        invalidate_flag_cache_safely(flag.environment.name, flag.key)
     
     return flag
     
@@ -131,7 +131,7 @@ def delete_flag(
     create_audit_log(db, flag_id=flag.id, environment_id=flag.environment_id, actor=current_user.username, action="DELETE", old_state=flag_to_dict(flag))
     db.delete(flag)
     db.commit()
-    invalidate_flag_cache(environment_name, flag_key)
+    invalidate_flag_cache_safely(environment_name, flag_key)
 
     return {
         "message": "Feature flag deleted successfully",
@@ -191,7 +191,7 @@ def create_targeting_rule(
     db.refresh(rule)
     flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
     if flag is not None:
-        invalidate_flag_cache(flag.environment.name, flag.key)
+        invalidate_flag_cache_safely(flag.environment.name, flag.key)
 
     return rule
 
@@ -237,11 +237,11 @@ def update_targeting_rule(
     db.commit()
     db.refresh(rule)
     if previous_cache_namespace is not None:
-        invalidate_flag_cache(*previous_cache_namespace)
+        invalidate_flag_cache_safely(*previous_cache_namespace)
     if current_flag is not None:
         current_cache_namespace = (current_flag.environment.name, current_flag.key)
         if current_cache_namespace != previous_cache_namespace:
-            invalidate_flag_cache(*current_cache_namespace)
+            invalidate_flag_cache_safely(*current_cache_namespace)
     
     return rule
 
@@ -274,7 +274,7 @@ def delete_targeting_rule(
     db.delete(rule)
     db.commit()
     if cache_namespace is not None:
-        invalidate_flag_cache(*cache_namespace)
+        invalidate_flag_cache_safely(*cache_namespace)
     
     return {
         "message": "Targeting rule deleted successfully",

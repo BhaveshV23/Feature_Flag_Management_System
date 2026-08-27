@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFlag, getEnvironments, getFlag, getFlags, updateFlag } from "../services/api";
+import { createFlag, createTargetingRule, deleteTargetingRule, getEnvironments, getFlag, getFlags, getTargetingRules, updateFlag, updateTargetingRule } from "../services/api";
 import FeatureFlagDetailsModal from "../components/features/FeatureFlagDetailsModal";
 import FeatureFlagEditForm from "../components/features/FeatureFlagEditForm";
 import FeatureFlagForm from "../components/features/FeatureFlagForm";
 import FeatureFlagFilters from "../components/features/FeatureFlagFilters";
 import FeatureFlagSummary from "../components/features/FeatureFlagSummary";
 import FeatureFlagTable from "../components/features/FeatureFlagTable";
+import TargetingRuleForm from "../components/features/TargetingRuleForm";
 
 function FeaturesPage() {
   const [flags, setFlags] = useState([]);
@@ -27,6 +28,15 @@ function FeaturesPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState("");
   const [selectedFlagId, setSelectedFlagId] = useState(null);
+  const [targetingRules, setTargetingRules] = useState([]);
+  const [isRulesLoading, setIsRulesLoading] = useState(false);
+  const [rulesError, setRulesError] = useState("");
+  const [isRuleFormOpen, setIsRuleFormOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [isRuleSaving, setIsRuleSaving] = useState(false);
+  const [ruleSubmitError, setRuleSubmitError] = useState("");
+  const [isRuleDeleting, setIsRuleDeleting] = useState(false);
+  const [ruleActionError, setRuleActionError] = useState("");
 
   const loadData = async () => {
     setIsLoading(true);
@@ -108,6 +118,20 @@ function FeaturesPage() {
     setUpdateError("");
     setIsDetailsOpen(true);
     loadFlagDetails(flagId);
+    loadTargetingRules();
+  };
+
+  const loadTargetingRules = async () => {
+    setIsRulesLoading(true);
+    setRulesError("");
+    try {
+      const result = await getTargetingRules();
+      setTargetingRules(Array.isArray(result) ? result : []);
+    } catch (requestError) {
+      setRulesError(requestError.message || "Unable to load targeting rules.");
+    } finally {
+      setIsRulesLoading(false);
+    }
   };
 
   const closeDetails = () => {
@@ -116,6 +140,8 @@ function FeaturesPage() {
     setDetailsFlag(null);
     setDetailsError("");
     setSelectedFlagId(null);
+    setTargetingRules([]);
+    setRulesError("");
   };
 
   const refreshUpdatedFlag = async (flagId) => {
@@ -146,6 +172,57 @@ function FeaturesPage() {
   };
 
   const buildUpdatePayload = (flag, enabled = flag.enabled) => ({ key: flag.key, type: flag.type, default_value: flag.default_value ?? "", enabled, description: flag.description ?? "", owner_team: flag.owner_team ?? "" });
+  const selectedFlagRules = useMemo(() => targetingRules.filter((rule) => String(rule.flag_id) === String(detailsFlag?.id)).sort((a, b) => a.priority - b.priority), [targetingRules, detailsFlag]);
+
+  const openRuleForm = (rule = null) => {
+    setEditingRule(rule);
+    setRuleSubmitError("");
+    setRuleActionError("");
+    setIsDetailsOpen(false);
+    setIsRuleFormOpen(true);
+  };
+
+  const closeRuleForm = () => {
+    if (isRuleSaving) return;
+    setIsRuleFormOpen(false);
+    setEditingRule(null);
+    setRuleSubmitError("");
+    setIsDetailsOpen(true);
+  };
+
+  const handleSaveRule = async (payload) => {
+    if (isRuleSaving) return;
+    setIsRuleSaving(true);
+    setRuleSubmitError("");
+    try {
+      if (editingRule) await updateTargetingRule(editingRule.id, payload);
+      else await createTargetingRule(payload);
+      await loadTargetingRules();
+      setIsRuleFormOpen(false);
+      setEditingRule(null);
+      setIsDetailsOpen(true);
+      setSuccessMessage(`Targeting rule ${editingRule ? "updated" : "added"}.`);
+    } catch (requestError) {
+      setRuleSubmitError(requestError.message || "The targeting rule could not be saved.");
+    } finally {
+      setIsRuleSaving(false);
+    }
+  };
+
+  const handleDeleteRule = async (ruleId) => {
+    if (isRuleDeleting) return;
+    setIsRuleDeleting(true);
+    setRuleActionError("");
+    try {
+      await deleteTargetingRule(ruleId);
+      await loadTargetingRules();
+      setSuccessMessage("Targeting rule deleted.");
+    } catch (requestError) {
+      setRuleActionError(requestError.message || "The targeting rule could not be deleted.");
+    } finally {
+      setIsRuleDeleting(false);
+    }
+  };
 
   if (isLoading) {
     return <section className="feature-page-state" role="status"><div className="dashboard-state-mark" aria-hidden="true">◌</div><h2>Loading feature flags</h2><p>Fetching flags and environments from the workspace.</p></section>;
@@ -178,8 +255,9 @@ function FeaturesPage() {
         <div className="feature-empty-state"><h3>No matching flags</h3><p>Try a different search term or status filter.</p></div>
       ) : <FeatureFlagTable flags={filteredFlags} onViewDetails={openDetails} />}
       {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
-      {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} />}
+      {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} targetingRules={selectedFlagRules} isRulesLoading={isRulesLoading} rulesError={rulesError} ruleActionError={ruleActionError} isDeletingRule={isRuleDeleting} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onRetryRules={loadTargetingRules} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} onAddRule={() => openRuleForm()} onEditRule={openRuleForm} onDeleteRule={handleDeleteRule} />}
       {isEditOpen && detailsFlag && <FeatureFlagEditForm flag={detailsFlag} isSubmitting={isUpdating} submitError={updateError} onClose={() => { if (!isUpdating) { setIsEditOpen(false); setIsDetailsOpen(true); } }} onSubmit={(payload) => handleUpdateFlag(payload, "Flag changes saved.")} />}
+      {isRuleFormOpen && detailsFlag && <TargetingRuleForm flag={detailsFlag} rule={editingRule} isSubmitting={isRuleSaving} submitError={ruleSubmitError} onClose={closeRuleForm} onSubmit={handleSaveRule} />}
     </section>
   );
 }

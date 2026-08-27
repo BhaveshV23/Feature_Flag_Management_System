@@ -1,5 +1,8 @@
 import hashlib
 import json
+import logging
+
+import redis
 
 from sqlalchemy.orm import Session
 
@@ -8,6 +11,9 @@ from app.models.environment import Environment
 from app.models.flag import Flag
 from app.models.targeting_rule import TargetingRule
 from app.models.user_group_membership import UserGroupMembership
+
+
+logger = logging.getLogger(__name__)
 
 
 def _build_cache_key(
@@ -73,6 +79,26 @@ def invalidate_flag_cache(environment_name: str, flag_key: str) -> int:
         deleted += redis_client.delete(*batch)
 
     return deleted
+
+
+def invalidate_flag_cache_safely(environment_name: str, flag_key: str) -> int | None:
+    """Best-effort invalidation after a committed database mutation.
+
+    Redis is an optimization; an unavailable cache must not turn a committed
+    PostgreSQL mutation into an API failure. Cached evaluations can remain
+    stale until Redis recovers and a later invalidation or expiry removes them.
+    """
+
+    try:
+        return invalidate_flag_cache(environment_name, flag_key)
+    except (redis.exceptions.RedisError, OSError) as exc:
+        logger.warning(
+            "Redis cache invalidation skipped for %s/%s; cached evaluations may remain stale: %s",
+            environment_name,
+            flag_key,
+            exc,
+        )
+        return None
 
 
 def _cache_result(

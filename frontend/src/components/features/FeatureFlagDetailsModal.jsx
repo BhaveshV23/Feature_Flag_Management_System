@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import TargetingRulesPanel from "./TargetingRulesPanel";
 
 function formatDate(value) {
   if (!value) return "Not available";
@@ -10,7 +11,7 @@ function DetailRow({ label, children }) {
   return <div className="flag-detail-row"><dt>{label}</dt><dd>{children || "Not set"}</dd></div>;
 }
 
-function FeatureFlagDetailsModal({ flag, environmentName, isLoading, error, actionError, isSaving, onClose, onRetry, onEdit, onToggle }) {
+function FeatureFlagDetailsModal({ flag, environmentName, isLoading, error, actionError, isSaving, targetingRules, isRulesLoading, rulesError, ruleActionError, isDeletingRule, onClose, onRetry, onRetryRules, onEdit, onToggle, onAddRule, onEditRule, onDeleteRule }) {
   const closeButtonRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ function FeatureFlagDetailsModal({ flag, environmentName, isLoading, error, acti
       {actionError && <div className="form-submit-error flag-details-submit-error" role="alert">{actionError}</div>}
       <section className="flag-details-section" aria-labelledby="flag-overview-heading"><h3 id="flag-overview-heading">Overview</h3><dl className="flag-details-grid"><DetailRow label="Environment">{environmentName || `Environment ${flag.environment_id}`}</DetailRow><DetailRow label="Owner team">{flag.owner_team}</DetailRow><DetailRow label="Description"><span className="flag-detail-description">{flag.description}</span></DetailRow></dl></section>
       <section className="flag-details-section" aria-labelledby="flag-configuration-heading"><h3 id="flag-configuration-heading">Configuration</h3><dl className="flag-details-grid"><DetailRow label="Type">{flag.type}</DetailRow><DetailRow label="Default value"><code>{flag.default_value ?? "Not set"}</code></DetailRow></dl></section>
+      <TargetingRulesPanel rules={targetingRules} isLoading={isRulesLoading} error={rulesError} actionError={ruleActionError} isDeleting={isDeletingRule} onRetry={onRetryRules} onAdd={onAddRule} onEdit={onEditRule} onDelete={onDeleteRule} />
       <section className="flag-details-section" aria-labelledby="flag-metadata-heading"><h3 id="flag-metadata-heading">Metadata</h3><dl className="flag-details-grid"><DetailRow label="Created">{formatDate(flag.created_at)}</DetailRow><DetailRow label="Last updated">{formatDate(flag.updated_at)}</DetailRow></dl></section>
       <div className="flag-details-actions">
         <button className="btn secondary" disabled={isSaving} onClick={onEdit} type="button">Edit Flag</button>

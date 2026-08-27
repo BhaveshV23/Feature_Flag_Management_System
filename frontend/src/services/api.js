@@ -96,3 +96,23 @@ export function getEnvironments() {
 export function getEnvironment(environmentId) {
   return authenticatedRequest(`/environment/${environmentId}`);
 }
+
+export function getTargetingRules() {
+  return authenticatedRequest("/targeting-rules");
+}
+
+export function getTargetingRule(ruleId) {
+  return authenticatedRequest(`/targeting-rules/${ruleId}`);
+}
+
+export function createTargetingRule(ruleData) {
+  return authenticatedRequest("/targeting-rules", { method: "POST", body: ruleData });
+}
+
+export function updateTargetingRule(ruleId, ruleData) {
+  return authenticatedRequest(`/targeting-rules/${ruleId}`, { method: "PUT", body: ruleData });
+}
+
+export function deleteTargetingRule(ruleId) {
+  return authenticatedRequest(`/targeting-rules/${ruleId}`, { method: "DELETE" });
+}
