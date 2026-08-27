@@ -97,6 +97,18 @@ export function getEnvironment(environmentId) {
   return authenticatedRequest(`/environment/${environmentId}`);
 }
 
+export function createEnvironment(environmentData) {
+  return authenticatedRequest("/environment", { method: "POST", body: environmentData });
+}
+
+export function updateEnvironment(environmentId, environmentData) {
+  return authenticatedRequest(`/environment/${environmentId}`, { method: "PUT", body: environmentData });
+}
+
+export function deleteEnvironment(environmentId) {
+  return authenticatedRequest(`/environment/${environmentId}`, { method: "DELETE" });
+}
+
 export function getTargetingRules() {
   return authenticatedRequest("/targeting-rules");
 }

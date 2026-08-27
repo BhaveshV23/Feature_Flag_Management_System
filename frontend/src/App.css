@@ -2224,6 +2224,38 @@ body:has(.dashboard-layout) {
 .targeting-action-error { margin-top: 18px; }
 
 .targeting-form-modal { width: min(650px, 100%); }
+.environment-page { max-width: 1180px; }
+.environment-toolbar { display: grid; gap: 8px; margin-top: 28px; max-width: 420px; }
+.environment-toolbar label { color: #8b95ab; font-size: 11px; font-weight: 700; }
+.environment-toolbar input { width: 100%; min-height: 40px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.11); border-radius: 8px; outline: none; color: #f5f7ff; background: #151c2c; }
+.environment-toolbar input:focus { border-color: #7c8dff; box-shadow: 0 0 0 3px rgba(124,141,255,.14); }
+.environment-table-wrap { margin-top: 18px; overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.025); }
+.environment-table { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
+.environment-table th { padding: 14px 18px; color: #69738a; background: rgba(255,255,255,.025); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.environment-table td { padding: 17px 18px; border-top: 1px solid rgba(255,255,255,.06); color: #aeb6ca; font-size: 12px; }
+.environment-table tbody tr:hover { background: rgba(255,255,255,.025); }
+.environment-table td:first-child strong { display: block; color: #f5f7ff; font-size: 13px; }
+.environment-table td:first-child small { display: block; margin-top: 5px; color: #69738a; font-size: 10px; }
+.environment-status { display: inline-flex; padding: 4px 8px; border-radius: 20px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.environment-status.is-active { color: #6dffb0; background: rgba(109,255,176,.1); }
+.environment-status.is-inactive { color: #9ca5bb; background: rgba(156,165,187,.1); }
+.environment-actions { display: flex; gap: 14px; }
+.delete-environment-dialog { width: min(520px, 100%); }
+
+@media (max-width: 720px) {
+  .environment-page .feature-page-header { flex-direction: column; }
+  .environment-page .feature-page-header .btn { width: 100%; }
+  .environment-table-wrap { overflow: visible; border: 0; background: transparent; }
+  .environment-table, .environment-table thead, .environment-table tbody, .environment-table tr, .environment-table td { display: block; width: 100%; }
+  .environment-table { min-width: 0; }
+  .environment-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .environment-table tr { margin-top: 12px; padding: 15px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.025); }
+  .environment-table td { display: flex; justify-content: space-between; gap: 14px; padding: 8px 0; border: 0; text-align: right; }
+  .environment-table td:first-child { display: block; padding-top: 0; text-align: left; }
+  .environment-table td::before { color: #69738a; content: attr(data-label); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .environment-table td:first-child::before { display: none; }
+  .environment-actions { justify-content: flex-end; }
+}
 .targeting-rule-form { margin-top: 24px; }
 
 .targeting-rule-form select {
