@@ -10,6 +10,7 @@ class TargetingRuleCreate(BaseModel):
     value: Any | None = None
     percentage: int | None = None
     enabled: bool = True
+    is_active: bool = True
     
 
 class TargetingRuleUpdate(BaseModel):
@@ -20,4 +21,5 @@ class TargetingRuleUpdate(BaseModel):
     value: Any | None = None
     percentage: int | None = None
     enabled: bool
+    is_active: bool | None = None
 

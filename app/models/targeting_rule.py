@@ -59,6 +59,13 @@ class TargetingRule(Base):
         default=True,
         nullable=False,
     )
+    # ``enabled`` is the boolean treatment returned after a rule matches.
+    # ``is_active`` controls whether this rule participates in evaluation.
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

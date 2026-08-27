@@ -188,7 +188,7 @@ def evaluate_flag(
             .filter(
                 TargetingRule.flag_id == flag.id,
                 TargetingRule.rule_type == "user",
-                TargetingRule.enabled.is_(True),
+                TargetingRule.is_active.is_(True),
             )
             .order_by(TargetingRule.priority)
             .all()
@@ -207,7 +207,7 @@ def evaluate_flag(
                         "message": "Matched User Targeting Rule",
                         "environment": environment.name,
                         "flag": flag.key,
-                        "enabled": flag.enabled,
+                        "enabled": rule.enabled,
                         "value": flag.default_value,
                         "user_context": user_context,
                     }
@@ -238,9 +238,9 @@ def evaluate_flag(
             group_rules = (
                 db.query(TargetingRule)
                 .filter(
-                    TargetingRule.flag_id == flag.id,
-                    TargetingRule.rule_type == "group",
-                    TargetingRule.enabled.is_(True),
+                TargetingRule.flag_id == flag.id,
+                TargetingRule.rule_type == "group",
+                TargetingRule.is_active.is_(True),
                 )
                 .order_by(TargetingRule.priority)
                 .all()
@@ -259,7 +259,7 @@ def evaluate_flag(
                             "message": "Matched Group Targeting Rule",
                             "environment": environment.name,
                             "flag": flag.key,
-                            "enabled": flag.enabled,
+                            "enabled": rule.enabled,
                             "value": flag.default_value,
                             "user_context": user_context,
                         }
@@ -277,7 +277,7 @@ def evaluate_flag(
             .filter(
                 TargetingRule.flag_id == flag.id,
                 TargetingRule.rule_type == "percentage",
-                TargetingRule.enabled.is_(True),
+                TargetingRule.is_active.is_(True),
             )
             .order_by(TargetingRule.priority)
             .all()
@@ -300,7 +300,7 @@ def evaluate_flag(
                     "message": "Matched Percentage Rollout",
                     "environment": environment.name,
                     "flag": flag.key,
-                    "enabled": flag.enabled,
+                    "enabled": rule.enabled,
                     "value": flag.default_value,
                     "user_context": user_context,
                 }
@@ -325,7 +325,7 @@ def evaluate_flag(
                     "message": "Matched Percentage Rollout",
                     "environment": environment.name,
                     "flag": flag.key,
-                    "enabled": flag.enabled,
+                    "enabled": rule.enabled,
                     "value": flag.default_value,
                     "user_context": user_context,
                 }

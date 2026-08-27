@@ -30,6 +30,7 @@ def targeting_rule_to_dict(rule: TargetingRule, environment_id: int) -> dict:
         "value": rule.value,
         "percentage": rule.percentage,
         "enabled": rule.enabled,
+        "is_active": rule.is_active,
     }
 
 

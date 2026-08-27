@@ -178,7 +178,8 @@ def create_targeting_rule(
         operator=request.operator,
         value=request.value,
         percentage=request.percentage,
-        enabled=request.enabled
+        enabled=request.enabled,
+        is_active=request.is_active,
     )
 
     flag = db.query(Flag).filter(Flag.id == rule.flag_id).first()
@@ -228,6 +229,8 @@ def update_targeting_rule(
     rule.value = request.value
     rule.percentage = request.percentage
     rule.enabled = request.enabled
+    if request.is_active is not None:
+        rule.is_active = request.is_active
     db.flush()
     if current_flag is not None:
         create_audit_log(db, flag_id=current_flag.id, environment_id=current_flag.environment_id, actor=current_user.username, action="TARGETING_RULE_UPDATE", old_state=old_state, new_state=targeting_rule_to_dict(rule, current_flag.environment_id))
