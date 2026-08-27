@@ -4,6 +4,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import PublicLayout from "./layouts/PublicLayout";
 import Dashboard from "./pages/Dashboard";
 import EnvironmentsPage from "./pages/EnvironmentsPage";
+import AuditLogsPage from "./pages/AuditLogsPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -29,7 +30,7 @@ function AppRoutes() {
         <Route path="/environments" element={<EnvironmentsPage />} />
         <Route path="/rollouts" element={<RolloutsPage />} />
         <Route path="/analytics" element={<PlaceholderPage title="Analytics" />} />
-        <Route path="/audit-logs" element={<PlaceholderPage title="Audit Logs" />} />
+        <Route path="/audit-logs" element={<AuditLogsPage />} />
         <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

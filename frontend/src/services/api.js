@@ -109,6 +109,11 @@ export function deleteEnvironment(environmentId) {
   return authenticatedRequest(`/environment/${environmentId}`, { method: "DELETE" });
 }
 
+export function getAuditLogs(params = {}) {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+  return authenticatedRequest(`/audit-logs${query.toString() ? `?${query.toString()}` : ""}`);
+}
+
 export function getTargetingRules() {
   return authenticatedRequest("/targeting-rules");
 }
