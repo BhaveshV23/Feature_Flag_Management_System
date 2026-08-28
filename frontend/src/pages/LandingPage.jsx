@@ -12,7 +12,7 @@ const features = [
   { icon: "⚡", title: "Fast Evaluation", text: "Evaluate feature flags quickly using Redis-powered caching." },
 ];
 
-function LandingPage({ isAuthenticated, onLogin, onSignOut }) {
+function LandingPage({ isAuthenticated, onLogin, onDashboard, onSignOut }) {
   const [flags, setFlags] = useState({ checkout: true, darkMode: true });
 
   const toggleFlag = (flag) => {
@@ -37,7 +37,7 @@ function LandingPage({ isAuthenticated, onLogin, onSignOut }) {
           <h1>Control Features.<br /><span>Ship With Confidence.</span></h1>
           <p>Manage feature flags, control rollouts, target users and release application features safely across multiple environments.</p>
           <div className="hero-buttons">
-            <button className="btn primary large" onClick={onLogin}>Get Started →</button>
+            <button className="btn primary large" onClick={isAuthenticated ? onDashboard : onLogin}>{isAuthenticated ? "Go to Dashboard →" : "Get Started →"}</button>
             <button className="btn secondary large" onClick={scrollToFeatures}>Explore Features</button>
           </div>
           <div className="stats">
