@@ -2289,6 +2289,14 @@ body:has(.dashboard-layout) {
 .audit-table th { padding: 14px 16px; color: #69738a; background: rgba(255,255,255,.025); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
 .audit-table td { padding: 16px; border-top: 1px solid rgba(255,255,255,.06); color: #aeb6ca; font-size: 11px; vertical-align: middle; }
 .audit-table tbody tr:hover { background: rgba(255,255,255,.025); }
+.audit-pagination { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 16px; }
+.audit-result-count { margin: 0; color: #8b95ab; font-size: 11px; }
+.audit-pagination nav { display: flex; align-items: center; gap: 8px; }
+.audit-page-numbers { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px; }
+.audit-page-button { min-height: 34px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; color: #aeb6ca; background: #151c2c; font-size: 11px; cursor: pointer; }
+.audit-page-button:hover:not(:disabled), .audit-page-button:focus-visible { border-color: #7c8dff; color: #f5f7ff; }
+.audit-page-button.is-current { border-color: #7c8dff; color: #fff; background: rgba(124,141,255,.2); }
+.audit-page-button:disabled { cursor: not-allowed; opacity: .42; }
 .audit-action { display: inline-flex; padding: 5px 8px; border-radius: 20px; color: #cfd5ff; background: rgba(124,141,255,.13); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .audit-delete { color: #ffb2b2; background: rgba(255,100,100,.12); }
 .audit-enable { color: #6dffb0; background: rgba(109,255,176,.1); }
@@ -2397,6 +2405,9 @@ body:has(.dashboard-layout) {
 .audit-json-grid h3 { color: #d6daea; font-size: 11px; }
 .audit-json-grid pre { max-height: 260px; overflow: auto; padding: 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; color: #aeb6ca; background: #0b111e; font-size: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 720px) {
+  .audit-pagination { align-items: stretch; flex-direction: column; gap: 12px; }
+  .audit-pagination nav { justify-content: space-between; width: 100%; }
+  .audit-page-button { padding-inline: 8px; }
   .audit-filters { grid-template-columns: 1fr; }
   .audit-table-wrap { overflow: visible; border: 0; background: transparent; }
   .audit-table, .audit-table thead, .audit-table tbody, .audit-table tr, .audit-table td { display: block; width: 100%; }
