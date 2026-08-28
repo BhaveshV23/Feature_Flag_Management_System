@@ -3,6 +3,7 @@ import { login as requestLogin } from "../services/api";
 import AuthContext from "./authContext";
 
 const TOKEN_KEY = "flagflow_access_token";
+const REDIRECT_KEY = "flagflow_post_auth_path";
 
 function decodeTokenPayload(token) {
   if (!token) return false;
@@ -28,6 +29,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [username, setUsername] = useState("User");
   const [isReady, setIsReady] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     function initializeAuthentication() {
@@ -47,6 +49,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem(TOKEN_KEY);
       setToken(null);
       setUsername("User");
+      setSessionExpired(true);
     };
     window.addEventListener("flagflow:auth-invalid", handleInvalidToken);
     return () => window.removeEventListener("flagflow:auth-invalid", handleInvalidToken);
@@ -59,6 +62,7 @@ export function AuthProvider({ children }) {
     const payload = decodeTokenPayload(result.access_token);
     setUsername(typeof payload?.sub === "string" && payload.sub.trim() ? payload.sub : "User");
     setIsReady(true);
+    setSessionExpired(false);
     return result;
   };
 
@@ -66,12 +70,19 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUsername("User");
+    setSessionExpired(false);
+  };
+
+  const consumeRedirectPath = () => {
+    const destination = localStorage.getItem(REDIRECT_KEY);
+    localStorage.removeItem(REDIRECT_KEY);
+    return destination && destination.startsWith("/") && !destination.startsWith("//") ? destination : null;
   };
 
   if (!isReady) return null;
 
   return (
-    <AuthContext.Provider value={{ token, username, isAuthenticated: Boolean(token), login, logout }}>
+    <AuthContext.Provider value={{ token, username, sessionExpired, isAuthenticated: Boolean(token), login, logout, consumeRedirectPath }}>
       {children}
     </AuthContext.Provider>
   );

@@ -50,6 +50,10 @@ export async function authenticatedRequest(path, options = {}) {
   });
 
   if (response.status === 401) {
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (currentPath.startsWith("/") && !currentPath.startsWith("//") && currentPath !== "/login") {
+      localStorage.setItem("flagflow_post_auth_path", currentPath);
+    }
     localStorage.removeItem(TOKEN_KEY);
     window.dispatchEvent(new Event("flagflow:auth-invalid"));
   }

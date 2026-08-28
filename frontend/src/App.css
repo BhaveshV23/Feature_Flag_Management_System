@@ -79,6 +79,8 @@ body {
 .login-submit { width: 100%; margin-top: 8px; padding: 13px; }
 .login-submit:disabled { cursor: wait; opacity: 0.65; }
 .form-error { color: #ff9d9d; font-size: 12px; line-height: 1.5; }
+.session-expired-message { display: grid; gap: 4px; margin-top: 18px; padding: 11px 13px; border: 1px solid rgba(240,189,120,.24); border-radius: 8px; color: #f0bd78; background: rgba(240,189,120,.08); font-size: 11px; line-height: 1.5; }
+.session-expired-message span { color: #c2a77d; }
 .auth-note { margin-top: 25px; color: #626c82; font-size: 11px; text-align: center; }
 
 button,
