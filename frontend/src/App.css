@@ -2248,6 +2248,8 @@ body:has(.dashboard-layout) {
 .environment-status.is-inactive { color: #9ca5bb; background: rgba(156,165,187,.1); }
 .environment-actions { display: flex; gap: 14px; }
 .delete-environment-dialog { width: min(520px, 100%); }
+.delete-flag-dialog { width: min(520px, 100%); }
+.flag-delete-action { margin-left: auto; }
 .audit-filters { display: grid; grid-template-columns: 1.5fr repeat(3, minmax(130px, 1fr)); gap: 12px; margin-top: 28px; padding: 18px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.025); }
 .audit-filters > div { display: grid; gap: 8px; }
 .audit-filters label { color: #8b95ab; font-size: 11px; font-weight: 700; }
