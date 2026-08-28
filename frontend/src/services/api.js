@@ -49,6 +49,11 @@ export async function authenticatedRequest(path, options = {}) {
     body,
   });
 
+  if (response.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.dispatchEvent(new Event("flagflow:auth-invalid"));
+  }
+
   return parseResponse(response);
 }
 
