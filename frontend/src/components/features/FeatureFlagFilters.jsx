@@ -4,6 +4,7 @@ function FeatureFlagFilters({ environments, selectedEnvironmentId, onEnvironment
       <div className="feature-filter-field environment-filter-field">
         <label htmlFor="environment-select">Environment</label>
         <select id="environment-select" value={selectedEnvironmentId} onChange={(event) => onEnvironmentChange(event.target.value)}>
+          <option value="all">All environments</option>
           {environments.map((environment) => <option key={environment.id} value={environment.id}>{environment.name}</option>)}
         </select>
       </div>

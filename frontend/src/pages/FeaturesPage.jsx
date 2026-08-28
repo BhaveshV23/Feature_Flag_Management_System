@@ -7,12 +7,14 @@ import FeatureFlagFilters from "../components/features/FeatureFlagFilters";
 import FeatureFlagSummary from "../components/features/FeatureFlagSummary";
 import FeatureFlagTable from "../components/features/FeatureFlagTable";
 import TargetingRuleForm from "../components/features/TargetingRuleForm";
+
+const ALL_ENVIRONMENTS = "all";
 import DeleteFlagDialog from "../components/features/DeleteFlagDialog";
 
 function FeaturesPage() {
   const [flags, setFlags] = useState([]);
   const [environments, setEnvironments] = useState([]);
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(ALL_ENVIRONMENTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [status, setStatus] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +52,7 @@ function FeaturesPage() {
       const nextEnvironments = Array.isArray(environmentResult) ? environmentResult : [];
       setFlags(Array.isArray(flagResult) ? flagResult : []);
       setEnvironments(nextEnvironments);
-      setSelectedEnvironmentId((currentId) => currentId || String(nextEnvironments[0]?.id || ""));
+      setSelectedEnvironmentId((currentId) => currentId || ALL_ENVIRONMENTS);
     } catch (requestError) {
       setError(requestError.message || "Unable to load feature flags.");
     } finally {
@@ -65,7 +67,7 @@ function FeaturesPage() {
         const nextEnvironments = Array.isArray(environmentResult) ? environmentResult : [];
         setFlags(Array.isArray(flagResult) ? flagResult : []);
         setEnvironments(nextEnvironments);
-        setSelectedEnvironmentId((currentId) => currentId || String(nextEnvironments[0]?.id || ""));
+        setSelectedEnvironmentId((currentId) => currentId || ALL_ENVIRONMENTS);
       } catch (requestError) {
         setError(requestError.message || "Unable to load feature flags.");
       } finally {
@@ -77,7 +79,7 @@ function FeaturesPage() {
   }, []);
 
   const selectedEnvironment = environments.find((environment) => String(environment.id) === String(selectedEnvironmentId));
-  const environmentFlags = useMemo(() => flags.filter((flag) => String(flag.environment_id) === String(selectedEnvironmentId)), [flags, selectedEnvironmentId]);
+  const environmentFlags = useMemo(() => selectedEnvironmentId === ALL_ENVIRONMENTS ? flags : flags.filter((flag) => String(flag.environment_id) === String(selectedEnvironmentId)), [flags, selectedEnvironmentId]);
   const filteredFlags = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     return environmentFlags.filter((flag) => {
@@ -270,14 +272,14 @@ function FeaturesPage() {
         <button className="btn primary create-flag-button" onClick={() => { setCreateError(""); setIsFormOpen(true); }} type="button">+ Create Flag</button>
       </div>
       <FeatureFlagFilters environments={environments} selectedEnvironmentId={selectedEnvironmentId} onEnvironmentChange={setSelectedEnvironmentId} searchTerm={searchTerm} onSearchChange={setSearchTerm} status={status} onStatusChange={setStatus} />
-      <div className="selected-environment-note">Viewing <strong>{selectedEnvironment?.name || "selected environment"}</strong> · Summary reflects current search and status filters.</div>
+      <div className="selected-environment-note">Viewing <strong>{selectedEnvironment?.name || "All environments"}</strong> · Summary reflects current search and status filters.</div>
       <FeatureFlagSummary total={filteredFlags.length} enabled={enabledCount} disabled={disabledCount} />
       {environmentFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No flags in this environment</h3><p>{selectedEnvironment?.name || "This environment"} does not have any feature flags yet.</p></div>
       ) : filteredFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No matching flags</h3><p>Try a different search term or status filter.</p></div>
-      ) : <FeatureFlagTable flags={filteredFlags} onViewDetails={openDetails} />}
-      {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
+      ) : <FeatureFlagTable flags={filteredFlags} environments={environments} onViewDetails={openDetails} />}
+      {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId === ALL_ENVIRONMENTS ? "" : selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
       {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} targetingRules={selectedFlagRules} isRulesLoading={isRulesLoading} rulesError={rulesError} ruleActionError={ruleActionError} isDeletingRule={isRuleDeleting} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onRetryRules={loadTargetingRules} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} onAddRule={() => openRuleForm()} onEditRule={openRuleForm} onDeleteRule={handleDeleteRule} onDeleteFlag={() => { setFlagDeleteError(""); setDeletingFlag(detailsFlag); }} />}
       {isEditOpen && detailsFlag && <FeatureFlagEditForm flag={detailsFlag} isSubmitting={isUpdating} submitError={updateError} onClose={() => { if (!isUpdating) { setIsEditOpen(false); setIsDetailsOpen(true); } }} onSubmit={(payload) => handleUpdateFlag(payload, "Flag changes saved.")} />}
       {isRuleFormOpen && detailsFlag && <TargetingRuleForm flag={detailsFlag} rule={editingRule} isSubmitting={isRuleSaving} submitError={ruleSubmitError} onClose={closeRuleForm} onSubmit={handleSaveRule} />}
