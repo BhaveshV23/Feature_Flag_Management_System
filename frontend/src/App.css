@@ -1716,6 +1716,13 @@ body:has(.dashboard-layout) {
   white-space: nowrap;
 }
 
+.dashboard-chart-subtitle {
+  margin-top: 8px;
+  color: #737d94;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .table-action:hover,
 .table-action:focus-visible {
   border-color: rgba(124, 141, 255, 0.6);

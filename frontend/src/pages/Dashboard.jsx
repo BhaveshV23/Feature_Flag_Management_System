@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { getEnvironments, getFlags } from "../services/api";
-import EvaluationAnalyticsPlaceholder from "../components/dashboard/EvaluationAnalyticsPlaceholder";
+import { getEnvironments, getFlags, getTargetingRules } from "../services/api";
 import FlagStatusChart from "../components/dashboard/FlagStatusChart";
 import FlagTypesChart from "../components/dashboard/FlagTypesChart";
 import FlagsByEnvironmentChart from "../components/dashboard/FlagsByEnvironmentChart";
 import StatCard from "../components/dashboard/StatCard";
+import TargetingRulesChart from "../components/dashboard/TargetingRulesChart";
 
 function Dashboard() {
   const [flags, setFlags] = useState([]);
   const [environments, setEnvironments] = useState([]);
+  const [targetingRules, setTargetingRules] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -20,10 +21,11 @@ function Dashboard() {
       setError("");
 
       try {
-        const [flagResult, environmentResult] = await Promise.all([getFlags(), getEnvironments()]);
+        const [flagResult, environmentResult, targetingRuleResult] = await Promise.all([getFlags(), getEnvironments(), getTargetingRules()]);
         if (isCurrent) {
           setFlags(Array.isArray(flagResult) ? flagResult : []);
           setEnvironments(Array.isArray(environmentResult) ? environmentResult : []);
+          setTargetingRules(Array.isArray(targetingRuleResult) ? targetingRuleResult : []);
         }
       } catch (requestError) {
         if (isCurrent) {
@@ -74,6 +76,11 @@ function Dashboard() {
     { name: "Enabled", value: enabledFlags },
     { name: "Disabled", value: disabledFlags },
   ].filter((entry) => entry.value > 0);
+  const targetingRuleCounts = Object.entries(targetingRules.reduce((counts, rule) => {
+    const type = rule.rule_type || "Unspecified";
+    counts[type] = (counts[type] || 0) + 1;
+    return counts;
+  }, {})).map(([type, rules]) => ({ type, rules }));
 
   return (
     <section className="dashboard-overview">
@@ -102,7 +109,7 @@ function Dashboard() {
           </div>
           <div className="dashboard-chart-grid">
             <FlagTypesChart data={flagTypes} />
-            <EvaluationAnalyticsPlaceholder />
+            <TargetingRulesChart data={targetingRuleCounts} />
           </div>
         </>
       )}
