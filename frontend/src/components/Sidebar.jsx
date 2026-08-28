@@ -9,7 +9,7 @@ const primaryLinks = [
   { label: "Audit Logs", to: "/audit-logs", icon: "≡" },
 ];
 
-function Sidebar({ onSignOut, isOpen, onClose }) {
+function Sidebar({ isOpen, onClose }) {
   return (
     <aside className={`dashboard-sidebar${isOpen ? " is-open" : ""}`} aria-label="Dashboard navigation">
       <div className="sidebar-brand">
@@ -38,10 +38,6 @@ function Sidebar({ onSignOut, isOpen, onClose }) {
           <span className="sidebar-icon" aria-hidden="true">⌁</span>
           <span>Settings</span>
         </NavLink>
-        <button className="sidebar-signout" onClick={onSignOut} type="button">
-          <span className="sidebar-icon" aria-hidden="true">↪</span>
-          <span>Sign out</span>
-        </button>
       </div>
     </aside>
   );

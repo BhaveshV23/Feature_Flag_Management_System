@@ -10,6 +10,7 @@ import FeaturesPage from "./pages/FeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RolloutsPage from "./pages/RolloutsPage";
+import SettingsPage from "./pages/SettingsPage";
 import useAuth from "./hooks/useAuth";
 
 function AppRoutes() {
@@ -32,15 +33,11 @@ function AppRoutes() {
         <Route path="/rollouts" element={<RolloutsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/audit-logs" element={<AuditLogsPage />} />
-        <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
-}
-
-function PlaceholderPage({ title }) {
-  return <section className="dashboard-placeholder"><p className="dashboard-eyebrow">Coming next</p><h2>{title}</h2><p>This workspace is reserved for a future dashboard module.</p></section>;
 }
 
 function App() {
