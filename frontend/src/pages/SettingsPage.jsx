@@ -17,7 +17,7 @@ const unavailableItems = [
 ];
 
 function SettingsPage() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, username, logout } = useAuth();
 
   const signOut = () => {
     logout();
@@ -42,6 +42,7 @@ function SettingsPage() {
           </div>
           <div className="settings-session-details">
             <div><span>Signed-in status</span><strong>{isAuthenticated ? "Authenticated" : "Not authenticated"}</strong></div>
+            <div><span>Username</span><strong>{username}</strong></div>
             <div><span>Authentication</span><strong>JWT Bearer Authentication</strong></div>
           </div>
           <p className="settings-card-copy">Account, profile, and security settings are currently managed by the authentication service.</p>
