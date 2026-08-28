@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { createFlag, createTargetingRule, deleteFlag, deleteTargetingRule, getEnvironments, getFlag, getFlags, getTargetingRules, updateFlag, updateTargetingRule } from "../services/api";
 import FeatureFlagDetailsModal from "../components/features/FeatureFlagDetailsModal";
 import FeatureFlagEditForm from "../components/features/FeatureFlagEditForm";
@@ -12,6 +13,12 @@ const ALL_ENVIRONMENTS = "all";
 import DeleteFlagDialog from "../components/features/DeleteFlagDialog";
 
 function FeaturesPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedFlagId = searchParams.get("flagId");
+  const autoOpenedFlagId = useRef(null);
+  const openedFromRollouts = useRef(false);
   const [flags, setFlags] = useState([]);
   const [environments, setEnvironments] = useState([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(ALL_ENVIRONMENTS);
@@ -118,7 +125,8 @@ function FeaturesPage() {
     }
   };
 
-  const openDetails = (flagId) => {
+  const openDetails = (flagId, fromRollouts = false) => {
+    openedFromRollouts.current = fromRollouts;
     setSelectedFlagId(flagId);
     setDetailsFlag(null);
     setUpdateError("");
@@ -142,13 +150,40 @@ function FeaturesPage() {
 
   const closeDetails = () => {
     if (isUpdating) return;
+    const shouldReturnToRollouts = openedFromRollouts.current;
+    openedFromRollouts.current = false;
     setIsDetailsOpen(false);
     setDetailsFlag(null);
     setDetailsError("");
     setSelectedFlagId(null);
     setTargetingRules([]);
     setRulesError("");
+    if (shouldReturnToRollouts) {
+      navigate("/rollouts", { replace: true });
+    } else if (searchParams.has("flagId")) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("flagId");
+      setSearchParams(nextParams, { replace: true });
+    }
   };
+
+  useEffect(() => {
+    if (isLoading || error || !requestedFlagId || autoOpenedFlagId.current === requestedFlagId) return;
+    const requestedFlag = flags.find((flag) => String(flag.id) === String(requestedFlagId));
+    autoOpenedFlagId.current = requestedFlagId;
+    const timer = window.setTimeout(() => {
+      if (requestedFlag) {
+        openDetails(requestedFlag.id, location.state?.from === "rollouts");
+        return;
+      }
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("flagId");
+      setSearchParams(nextParams, { replace: true });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  // openDetails is intentionally captured for this one-time route handoff.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error, flags, isLoading, location.state, requestedFlagId, searchParams, setSearchParams]);
 
   const refreshUpdatedFlag = async (flagId) => {
     const [flag, flagResult] = await Promise.all([getFlag(flagId), getFlags()]);
