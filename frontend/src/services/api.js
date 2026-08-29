@@ -123,6 +123,11 @@ export function getAuditLogs(params = {}) {
   return authenticatedRequest(`/audit-logs${query.toString() ? `?${query.toString()}` : ""}`);
 }
 
+export function getEvaluationAnalytics(params = {}) {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+  return authenticatedRequest(`/analytics/evaluations${query.toString() ? `?${query}` : ""}`);
+}
+
 export function getTargetingRules() {
   return authenticatedRequest("/targeting-rules");
 }
