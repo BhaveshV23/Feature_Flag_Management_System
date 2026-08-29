@@ -31,6 +31,11 @@ class FakeRedis:
                 deleted += 1
         return deleted
 
+    def hincrby(self, key, field, amount):
+        bucket = self.values.setdefault(key, {})
+        bucket[field] = bucket.get(field, 0) + amount
+        return bucket[field]
+
 
 class UnavailableRedis:
     def scan_iter(self, match=None, count=None):

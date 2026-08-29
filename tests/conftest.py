@@ -19,6 +19,7 @@ class FakeRedis:
 
     def __init__(self):
         self.values = {}
+        self.hashes = {}
 
     def get(self, key):
         return self.values.get(key)
@@ -36,6 +37,11 @@ class FakeRedis:
                 del self.values[key]
                 deleted += 1
         return deleted
+
+    def hincrby(self, key, field, amount):
+        bucket = self.hashes.setdefault(key, {})
+        bucket[field] = bucket.get(field, 0) + amount
+        return bucket[field]
 
 
 @pytest.fixture(autouse=True)

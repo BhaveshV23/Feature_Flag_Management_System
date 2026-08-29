@@ -8,11 +8,19 @@ from app.services.evaluation_analytics import (
     record_evaluation,
     utc_hour_start,
 )
+from app.services import evaluation_engine
 
 
 class AnalyticsRedis:
     def __init__(self):
         self.hashes = {}
+        self.values = {}
+
+    def get(self, key):
+        return self.values.get(key)
+
+    def set(self, key, value):
+        self.values[key] = value
 
     def hincrby(self, key, field, amount):
         bucket = self.hashes.setdefault(key, {})
@@ -21,6 +29,12 @@ class AnalyticsRedis:
 
 
 class UnavailableRedis:
+    def get(self, *_args):
+        return None
+
+    def set(self, *_args):
+        return None
+
     def hincrby(self, *_args):
         raise redis.exceptions.ConnectionError("Redis unavailable")
 
@@ -70,3 +84,50 @@ def test_analytics_redis_failure_is_isolated(caplog):
 
     assert result is None
     assert "Evaluation analytics counter unavailable" in caplog.text
+
+
+def test_valid_evaluation_requests_are_counted_including_cache_hits(db_session, monkeypatch):
+    cache = AnalyticsRedis()
+    monkeypatch.setattr(evaluation_engine, "redis_client", cache)
+    timestamp = datetime(2026, 8, 29, 14, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.services.evaluation_analytics.datetime", _FixedDateTime(timestamp))
+
+    from app.services.evaluation_engine import evaluate_flag
+
+    evaluate_flag(db_session, "dark_mode", "development", {"user_id": "same"})
+    evaluate_flag(db_session, "dark_mode", "development", {"user_id": "same"})
+    evaluate_flag(db_session, "dark_mode", "development", {"user_id": "same"})
+
+    environment = db_session.query(evaluation_engine.Environment).filter_by(name="development").one()
+    flag = db_session.query(evaluation_engine.Flag).filter_by(key="dark_mode").one()
+    assert cache.hashes[evaluation_bucket_key(timestamp)][evaluation_field(flag.id, environment.id)] == 3
+
+
+def test_invalid_evaluations_do_not_create_analytics_counters(db_session, monkeypatch):
+    cache = AnalyticsRedis()
+    monkeypatch.setattr(evaluation_engine, "redis_client", cache)
+    from app.services.evaluation_engine import evaluate_flag
+
+    assert evaluate_flag(db_session, "missing", "development")['success'] is False
+    assert evaluate_flag(db_session, "dark_mode", "missing")['success'] is False
+    assert cache.hashes == {}
+
+
+def test_analytics_failure_does_not_change_evaluation_result(db_session, monkeypatch, caplog):
+    monkeypatch.setattr(evaluation_engine, "redis_client", UnavailableRedis())
+    from app.services.evaluation_engine import evaluate_flag
+
+    with caplog.at_level("WARNING", logger="app.services.evaluation_analytics"):
+        result = evaluate_flag(db_session, "dark_mode", "development", {"user_id": "same"})
+
+    assert result["success"] is True
+    assert result["enabled"] is True
+    assert "Evaluation analytics counter unavailable" in caplog.text
+
+
+class _FixedDateTime:
+    def __init__(self, current):
+        self.current = current
+
+    def now(self, tz=None):
+        return self.current.astimezone(tz) if tz else self.current.replace(tzinfo=None)

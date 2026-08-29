@@ -7,6 +7,7 @@ import redis
 from sqlalchemy.orm import Session
 
 from app.cache.redis_client import redis_client
+from app.services.evaluation_analytics import record_evaluation
 from app.models.environment import Environment
 from app.models.flag import Flag
 from app.models.targeting_rule import TargetingRule
@@ -183,6 +184,11 @@ def evaluate_flag(
             "success": False,
             "message": "Feature flag not found",
         }
+
+    # Count every valid evaluation request, including result-cache hits. The
+    # analytics service isolates Redis failures so telemetry cannot affect the
+    # evaluation response.
+    record_evaluation(redis_client, flag.id, environment.id)
 
     # 3. Check Redis Cache
 
