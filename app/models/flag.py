@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -73,8 +74,9 @@ class Flag(Base):
         nullable=False
     )
     
-    type: Mapped[str]
-    default_value: Mapped[str | None]
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    # JSON preserves legacy strings while allowing native numeric defaults.
+    default_value: Mapped[object | None] = mapped_column(JSON, nullable=True)
     owner_team: Mapped[str | None]
 
     environment = relationship("Environment", back_populates="flags")

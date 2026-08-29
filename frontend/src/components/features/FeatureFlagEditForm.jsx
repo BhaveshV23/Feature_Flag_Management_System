@@ -7,6 +7,7 @@ function validate(values) {
   else if (values.key.length > 100) errors.key = "Flag keys must be 100 characters or fewer.";
   else if (!keyPattern.test(values.key)) errors.key = "Use lowercase letters, numbers, dots, hyphens, or underscores.";
   if (!values.type.trim()) errors.type = "Enter a flag type.";
+  if (values.type === "number" && (values.default_value === "" || !Number.isFinite(Number(values.default_value)))) errors.default_value = "Enter a finite number.";
   if (!values.description.trim()) errors.description = "Enter a description.";
   if (!values.owner_team.trim()) errors.owner_team = "Enter an owner team.";
   return errors;
@@ -44,8 +45,8 @@ function FeatureFlagEditForm({ flag, isSubmitting, submitError, onClose, onSubmi
         <form className="feature-flag-form" noValidate onSubmit={handleSubmit}>
           {submitError && <div className="form-submit-error" role="alert">{submitError}</div>}
           <div className="form-field"><label htmlFor="edit-flag-key">Key</label><input id="edit-flag-key" value={values.key} onChange={(event) => updateField("key", event.target.value)} maxLength={100} aria-invalid={Boolean(fieldErrors.key)} required />{fieldError("key")}</div>
-          <div className="form-field"><label htmlFor="edit-flag-type">Type</label><input id="edit-flag-type" value={values.type} onChange={(event) => updateField("type", event.target.value)} aria-invalid={Boolean(fieldErrors.type)} required />{fieldError("type")}</div>
-          <div className="form-field"><label htmlFor="edit-default-value">Default Value</label><input id="edit-default-value" value={values.default_value} onChange={(event) => updateField("default_value", event.target.value)} required /></div>
+          <div className="form-field"><label htmlFor="edit-flag-type">Type</label><select id="edit-flag-type" value={values.type} onChange={(event) => updateField("type", event.target.value)} aria-invalid={Boolean(fieldErrors.type)} required><option value="boolean">boolean</option><option value="string">string</option><option value="number">number</option></select>{fieldError("type")}</div>
+          <div className="form-field"><label htmlFor="edit-default-value">Default Value</label><input id="edit-default-value" type={values.type === "number" ? "number" : "text"} step={values.type === "number" ? "any" : undefined} value={values.default_value} onChange={(event) => updateField("default_value", event.target.value)} aria-invalid={Boolean(fieldErrors.default_value)} required />{fieldError("default_value")}</div>
           <div className="form-field"><label htmlFor="edit-owner-team">Owner Team</label><input id="edit-owner-team" value={values.owner_team} onChange={(event) => updateField("owner_team", event.target.value)} aria-invalid={Boolean(fieldErrors.owner_team)} required />{fieldError("owner_team")}</div>
           <div className="form-field full-width"><label htmlFor="edit-description">Description</label><textarea id="edit-description" value={values.description} onChange={(event) => updateField("description", event.target.value)} rows="3" aria-invalid={Boolean(fieldErrors.description)} required />{fieldError("description")}</div>
           <label className="enabled-field"><input type="checkbox" checked={values.enabled} onChange={(event) => updateField("enabled", event.target.checked)} /> Enabled</label>

@@ -71,6 +71,8 @@ Stores all feature flags available in different environments.
 | name | String | Display name of the feature |
 | description | Text | Feature description |
 | enabled | Boolean | Current status of the feature |
+| type | String | Supported flag type: boolean, string, or number |
+| default_value | JSON | Default value; number flags use JSON numeric values |
 | created_at | Timestamp | Record creation timestamp |
 | updated_at | Timestamp | Last updated timestamp |
 
