@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.flag_routes import router as flags_router
 from app.api.auth import router as auth_router
 from app.api.audit_routes import router as audit_router
+from app.api.analytics_routes import router as analytics_router
 
 app = FastAPI(
     title="Feature Flag Management System",
@@ -25,3 +26,4 @@ def home():
 app.include_router(flags_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
