@@ -165,7 +165,7 @@ function FeaturesPage() {
     setTargetingRules([]);
     setRulesError("");
     if (shouldReturnToRollouts) {
-      navigate("/rollouts", { replace: true });
+      navigate("/rollouts", { replace: true, state: { page: Number(location.state?.returnPage) || 1 } });
     } else if (searchParams.has("flagId")) {
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete("flagId");
