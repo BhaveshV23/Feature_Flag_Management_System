@@ -3,7 +3,7 @@ import "../App.css";
 import useAuth from "../hooks/useAuth";
 
 function LoginPage({ onBack, onLogin }) {
-  const { login } = useAuth();
+  const { login, sessionExpired } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -32,6 +32,7 @@ function LoginPage({ onBack, onLogin }) {
         <div className="badge">Secure workspace access</div>
         <h1 id="login-title">Welcome back.</h1>
         <p className="auth-intro">Sign in to manage releases and feature flags across your environments.</p>
+        {sessionExpired && <div className="session-expired-message" role="status"><strong>Session expired</strong><span>Your session has expired. Please sign in again.</span></div>}
         <form className="login-form" onSubmit={handleSubmit}>
           <label htmlFor="username">Username</label>
           <input id="username" name="username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required placeholder="Enter your username" />

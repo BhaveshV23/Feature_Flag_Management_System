@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFlag, createTargetingRule, deleteTargetingRule, getEnvironments, getFlag, getFlags, getTargetingRules, updateFlag, updateTargetingRule } from "../services/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { createFlag, createTargetingRule, deleteFlag, deleteTargetingRule, getEnvironments, getFlag, getFlags, getTargetingRules, updateFlag, updateTargetingRule } from "../services/api";
 import FeatureFlagDetailsModal from "../components/features/FeatureFlagDetailsModal";
 import FeatureFlagEditForm from "../components/features/FeatureFlagEditForm";
 import FeatureFlagForm from "../components/features/FeatureFlagForm";
@@ -8,12 +9,22 @@ import FeatureFlagSummary from "../components/features/FeatureFlagSummary";
 import FeatureFlagTable from "../components/features/FeatureFlagTable";
 import TargetingRuleForm from "../components/features/TargetingRuleForm";
 
+const ALL_ENVIRONMENTS = "all";
+import DeleteFlagDialog from "../components/features/DeleteFlagDialog";
+
 function FeaturesPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedFlagId = searchParams.get("flagId");
+  const autoOpenedFlagId = useRef(null);
+  const openedFromRollouts = useRef(false);
   const [flags, setFlags] = useState([]);
   const [environments, setEnvironments] = useState([]);
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(ALL_ENVIRONMENTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [status, setStatus] = useState("all");
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -37,6 +48,9 @@ function FeaturesPage() {
   const [ruleSubmitError, setRuleSubmitError] = useState("");
   const [isRuleDeleting, setIsRuleDeleting] = useState(false);
   const [ruleActionError, setRuleActionError] = useState("");
+  const [deletingFlag, setDeletingFlag] = useState(null);
+  const [isFlagDeleting, setIsFlagDeleting] = useState(false);
+  const [flagDeleteError, setFlagDeleteError] = useState("");
 
   const loadData = async () => {
     setIsLoading(true);
@@ -46,7 +60,7 @@ function FeaturesPage() {
       const nextEnvironments = Array.isArray(environmentResult) ? environmentResult : [];
       setFlags(Array.isArray(flagResult) ? flagResult : []);
       setEnvironments(nextEnvironments);
-      setSelectedEnvironmentId((currentId) => currentId || String(nextEnvironments[0]?.id || ""));
+      setSelectedEnvironmentId((currentId) => currentId || ALL_ENVIRONMENTS);
     } catch (requestError) {
       setError(requestError.message || "Unable to load feature flags.");
     } finally {
@@ -61,7 +75,7 @@ function FeaturesPage() {
         const nextEnvironments = Array.isArray(environmentResult) ? environmentResult : [];
         setFlags(Array.isArray(flagResult) ? flagResult : []);
         setEnvironments(nextEnvironments);
-        setSelectedEnvironmentId((currentId) => currentId || String(nextEnvironments[0]?.id || ""));
+        setSelectedEnvironmentId((currentId) => currentId || ALL_ENVIRONMENTS);
       } catch (requestError) {
         setError(requestError.message || "Unable to load feature flags.");
       } finally {
@@ -73,7 +87,7 @@ function FeaturesPage() {
   }, []);
 
   const selectedEnvironment = environments.find((environment) => String(environment.id) === String(selectedEnvironmentId));
-  const environmentFlags = useMemo(() => flags.filter((flag) => String(flag.environment_id) === String(selectedEnvironmentId)), [flags, selectedEnvironmentId]);
+  const environmentFlags = useMemo(() => selectedEnvironmentId === ALL_ENVIRONMENTS ? flags : flags.filter((flag) => String(flag.environment_id) === String(selectedEnvironmentId)), [flags, selectedEnvironmentId]);
   const filteredFlags = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     return environmentFlags.filter((flag) => {
@@ -82,6 +96,11 @@ function FeaturesPage() {
       return matchesStatus && (!query || searchableText.includes(query));
     });
   }, [environmentFlags, searchTerm, status]);
+  const totalPages = Math.ceil(filteredFlags.length / 10);
+  const visiblePage = totalPages ? Math.min(page, totalPages) : 1;
+  const paginatedFlags = useMemo(() => filteredFlags.slice((visiblePage - 1) * 10, visiblePage * 10), [filteredFlags, visiblePage]);
+  const resultStart = filteredFlags.length ? (visiblePage - 1) * 10 + 1 : 0;
+  const resultEnd = Math.min(visiblePage * 10, filteredFlags.length);
 
   const handleCreateFlag = async (flagData) => {
     setIsCreating(true);
@@ -112,7 +131,8 @@ function FeaturesPage() {
     }
   };
 
-  const openDetails = (flagId) => {
+  const openDetails = (flagId, fromRollouts = false) => {
+    openedFromRollouts.current = fromRollouts;
     setSelectedFlagId(flagId);
     setDetailsFlag(null);
     setUpdateError("");
@@ -136,13 +156,40 @@ function FeaturesPage() {
 
   const closeDetails = () => {
     if (isUpdating) return;
+    const shouldReturnToRollouts = openedFromRollouts.current;
+    openedFromRollouts.current = false;
     setIsDetailsOpen(false);
     setDetailsFlag(null);
     setDetailsError("");
     setSelectedFlagId(null);
     setTargetingRules([]);
     setRulesError("");
+    if (shouldReturnToRollouts) {
+      navigate("/rollouts", { replace: true, state: { page: Number(location.state?.returnPage) || 1 } });
+    } else if (searchParams.has("flagId")) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("flagId");
+      setSearchParams(nextParams, { replace: true });
+    }
   };
+
+  useEffect(() => {
+    if (isLoading || error || !requestedFlagId || autoOpenedFlagId.current === requestedFlagId) return;
+    const requestedFlag = flags.find((flag) => String(flag.id) === String(requestedFlagId));
+    autoOpenedFlagId.current = requestedFlagId;
+    const timer = window.setTimeout(() => {
+      if (requestedFlag) {
+        openDetails(requestedFlag.id, location.state?.from === "rollouts");
+        return;
+      }
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("flagId");
+      setSearchParams(nextParams, { replace: true });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  // openDetails is intentionally captured for this one-time route handoff.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error, flags, isLoading, location.state, requestedFlagId, searchParams, setSearchParams]);
 
   const refreshUpdatedFlag = async (flagId) => {
     const [flag, flagResult] = await Promise.all([getFlag(flagId), getFlags()]);
@@ -224,6 +271,25 @@ function FeaturesPage() {
     }
   };
 
+  const handleDeleteFlag = async () => {
+    if (!deletingFlag || isFlagDeleting) return;
+    setIsFlagDeleting(true);
+    setFlagDeleteError("");
+    try {
+      await deleteFlag(deletingFlag.id);
+      setFlags((currentFlags) => currentFlags.filter((flag) => flag.id !== deletingFlag.id));
+      setDeletingFlag(null);
+      setIsDetailsOpen(false);
+      setDetailsFlag(null);
+      setSelectedFlagId(null);
+      setSuccessMessage("Flag deleted successfully.");
+    } catch (requestError) {
+      setFlagDeleteError(requestError.message || "The flag could not be deleted.");
+    } finally {
+      setIsFlagDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return <section className="feature-page-state" role="status"><div className="dashboard-state-mark" aria-hidden="true">◌</div><h2>Loading feature flags</h2><p>Fetching flags and environments from the workspace.</p></section>;
   }
@@ -246,18 +312,19 @@ function FeaturesPage() {
         <div><p className="dashboard-eyebrow">Release configuration</p><h2>Feature Flags</h2><p>Review flag state and release configuration across each environment.</p></div>
         <button className="btn primary create-flag-button" onClick={() => { setCreateError(""); setIsFormOpen(true); }} type="button">+ Create Flag</button>
       </div>
-      <FeatureFlagFilters environments={environments} selectedEnvironmentId={selectedEnvironmentId} onEnvironmentChange={setSelectedEnvironmentId} searchTerm={searchTerm} onSearchChange={setSearchTerm} status={status} onStatusChange={setStatus} />
-      <div className="selected-environment-note">Viewing <strong>{selectedEnvironment?.name || "selected environment"}</strong> · Summary reflects current search and status filters.</div>
+      <FeatureFlagFilters environments={environments} selectedEnvironmentId={selectedEnvironmentId} onEnvironmentChange={(value) => { setSelectedEnvironmentId(value); setPage(1); }} searchTerm={searchTerm} onSearchChange={(value) => { setSearchTerm(value); setPage(1); }} status={status} onStatusChange={(value) => { setStatus(value); setPage(1); }} />
+      <div className="selected-environment-note">Viewing <strong>{selectedEnvironment?.name || "All environments"}</strong> · Summary reflects current search and status filters.</div>
       <FeatureFlagSummary total={filteredFlags.length} enabled={enabledCount} disabled={disabledCount} />
       {environmentFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No flags in this environment</h3><p>{selectedEnvironment?.name || "This environment"} does not have any feature flags yet.</p></div>
       ) : filteredFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No matching flags</h3><p>Try a different search term or status filter.</p></div>
-      ) : <FeatureFlagTable flags={filteredFlags} onViewDetails={openDetails} />}
-      {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
-      {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} targetingRules={selectedFlagRules} isRulesLoading={isRulesLoading} rulesError={rulesError} ruleActionError={ruleActionError} isDeletingRule={isRuleDeleting} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onRetryRules={loadTargetingRules} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} onAddRule={() => openRuleForm()} onEditRule={openRuleForm} onDeleteRule={handleDeleteRule} />}
+      ) : <><FeatureFlagTable flags={paginatedFlags} environments={environments} onViewDetails={openDetails} /><div className="feature-pagination"><span className="feature-result-count">Showing {resultStart}–{resultEnd} of {filteredFlags.length}</span>{totalPages > 1 && <nav aria-label="Feature flag pagination"><button className="feature-page-button" aria-label="Previous page" disabled={visiblePage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))} type="button">← Previous</button><div className="feature-page-numbers">{Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => <button className={`feature-page-button ${pageNumber === visiblePage ? "is-current" : ""}`} aria-current={pageNumber === visiblePage ? "page" : undefined} aria-label={`Go to page ${pageNumber}`} onClick={() => setPage(pageNumber)} type="button" key={pageNumber}>{pageNumber}</button>)}</div><button className="feature-page-button" aria-label="Next page" disabled={visiblePage === totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))} type="button">Next →</button></nav>}</div></>}
+      {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId === ALL_ENVIRONMENTS ? "" : selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
+      {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} targetingRules={selectedFlagRules} isRulesLoading={isRulesLoading} rulesError={rulesError} ruleActionError={ruleActionError} isDeletingRule={isRuleDeleting} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onRetryRules={loadTargetingRules} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} onAddRule={() => openRuleForm()} onEditRule={openRuleForm} onDeleteRule={handleDeleteRule} onDeleteFlag={() => { setFlagDeleteError(""); setDeletingFlag(detailsFlag); }} />}
       {isEditOpen && detailsFlag && <FeatureFlagEditForm flag={detailsFlag} isSubmitting={isUpdating} submitError={updateError} onClose={() => { if (!isUpdating) { setIsEditOpen(false); setIsDetailsOpen(true); } }} onSubmit={(payload) => handleUpdateFlag(payload, "Flag changes saved.")} />}
       {isRuleFormOpen && detailsFlag && <TargetingRuleForm flag={detailsFlag} rule={editingRule} isSubmitting={isRuleSaving} submitError={ruleSubmitError} onClose={closeRuleForm} onSubmit={handleSaveRule} />}
+      {deletingFlag && <DeleteFlagDialog flag={deletingFlag} isDeleting={isFlagDeleting} error={flagDeleteError} onClose={() => !isFlagDeleting && setDeletingFlag(null)} onConfirm={handleDeleteFlag} />}
     </section>
   );
 }
