@@ -15,7 +15,7 @@ import useAuth from "./hooks/useAuth";
 
 function AppRoutes() {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, consumeRedirectPath } = useAuth();
 
   const signOut = () => {
     logout();
@@ -25,7 +25,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<PublicLayout><LandingPage isAuthenticated={isAuthenticated} onLogin={() => navigate("/login")} onDashboard={() => navigate("/dashboard")} onSignOut={signOut} /></PublicLayout>} />
-      <Route path="/login" element={<PublicLayout><LoginPage onBack={() => navigate("/")} onLogin={() => navigate("/dashboard")} /></PublicLayout>} />
+      <Route path="/login" element={<PublicLayout><LoginPage onBack={() => navigate("/")} onLogin={() => navigate(consumeRedirectPath() || "/dashboard")} /></PublicLayout>} />
       <Route element={isAuthenticated ? <DashboardLayout onSignOut={signOut} /> : <Navigate to="/login" replace />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/features" element={<FeaturesPage />} />

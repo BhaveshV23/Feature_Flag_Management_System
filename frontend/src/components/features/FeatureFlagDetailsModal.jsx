@@ -11,7 +11,7 @@ function DetailRow({ label, children }) {
   return <div className="flag-detail-row"><dt>{label}</dt><dd>{children || "Not set"}</dd></div>;
 }
 
-function FeatureFlagDetailsModal({ flag, environmentName, isLoading, error, actionError, isSaving, targetingRules, isRulesLoading, rulesError, ruleActionError, isDeletingRule, onClose, onRetry, onRetryRules, onEdit, onToggle, onAddRule, onEditRule, onDeleteRule }) {
+function FeatureFlagDetailsModal({ flag, environmentName, isLoading, error, actionError, isSaving, targetingRules, isRulesLoading, rulesError, ruleActionError, isDeletingRule, onClose, onRetry, onRetryRules, onEdit, onToggle, onAddRule, onEditRule, onDeleteRule, onDeleteFlag }) {
   const closeButtonRef = useRef(null);
 
   useEffect(() => {
@@ -43,6 +43,7 @@ function FeatureFlagDetailsModal({ flag, environmentName, isLoading, error, acti
       <div className="flag-details-actions">
         <button className="btn secondary" disabled={isSaving} onClick={onEdit} type="button">Edit Flag</button>
         <button className={`btn ${flag.enabled ? "danger" : "primary"}`} disabled={isSaving} onClick={() => onToggle(!flag.enabled)} type="button">{isSaving ? "Saving…" : flag.enabled ? "Disable Flag" : "Enable Flag"}</button>
+        <button className="text-action destructive flag-delete-action" disabled={isSaving} onClick={onDeleteFlag} type="button">Delete Flag</button>
       </div>
     </>
   );

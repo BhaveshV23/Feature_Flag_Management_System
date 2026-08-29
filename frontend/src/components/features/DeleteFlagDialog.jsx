@@ -1,0 +1,5 @@
+function DeleteFlagDialog({ flag, isDeleting, error, onClose, onConfirm }) {
+  return <div className="feature-modal-backdrop" role="presentation"><section className="feature-modal delete-flag-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-flag-title"><div className="feature-modal-header"><div><p className="dashboard-eyebrow">Destructive action</p><h2 id="delete-flag-title">Delete flag?</h2><p>This will permanently remove <strong>{flag.name || flag.key}</strong>. This action cannot be undone.</p></div><button className="feature-modal-close" aria-label="Close delete confirmation" disabled={isDeleting} onClick={onClose} type="button">×</button></div>{error && <div className="form-submit-error" role="alert">{error}</div>}<div className="feature-form-actions"><button className="btn secondary" disabled={isDeleting} onClick={onClose} type="button">Cancel</button><button className="btn danger" disabled={isDeleting} onClick={onConfirm} type="button">{isDeleting ? "Deleting…" : "Delete Flag"}</button></div></section></div>;
+}
+
+export default DeleteFlagDialog;

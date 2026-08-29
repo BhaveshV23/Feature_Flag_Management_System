@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import useAuth from "../hooks/useAuth";
 
 const pageTitles = {
   "/dashboard": "Overview",
@@ -16,6 +17,7 @@ function DashboardLayout({ onSignOut }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const pageTitle = pageTitles[location.pathname] || "Workspace";
+  const { username } = useAuth();
 
   return (
     <div className="dashboard-layout">
@@ -30,7 +32,7 @@ function DashboardLayout({ onSignOut }) {
           </div>
           <div className="dashboard-account">
             <div className="account-avatar" aria-hidden="true">A</div>
-            <div className="account-copy"><strong>Admin</strong><span>Administrator</span></div>
+            <div className="account-copy"><strong title={username}>{username}</strong><span>Administrator</span></div>
             <button className="topbar-signout" onClick={onSignOut} type="button">Sign out</button>
           </div>
         </header>
