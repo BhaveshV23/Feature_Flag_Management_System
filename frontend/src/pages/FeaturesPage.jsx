@@ -24,6 +24,7 @@ function FeaturesPage() {
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(ALL_ENVIRONMENTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [status, setStatus] = useState("all");
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -95,6 +96,11 @@ function FeaturesPage() {
       return matchesStatus && (!query || searchableText.includes(query));
     });
   }, [environmentFlags, searchTerm, status]);
+  const totalPages = Math.ceil(filteredFlags.length / 10);
+  const visiblePage = totalPages ? Math.min(page, totalPages) : 1;
+  const paginatedFlags = useMemo(() => filteredFlags.slice((visiblePage - 1) * 10, visiblePage * 10), [filteredFlags, visiblePage]);
+  const resultStart = filteredFlags.length ? (visiblePage - 1) * 10 + 1 : 0;
+  const resultEnd = Math.min(visiblePage * 10, filteredFlags.length);
 
   const handleCreateFlag = async (flagData) => {
     setIsCreating(true);
@@ -306,14 +312,14 @@ function FeaturesPage() {
         <div><p className="dashboard-eyebrow">Release configuration</p><h2>Feature Flags</h2><p>Review flag state and release configuration across each environment.</p></div>
         <button className="btn primary create-flag-button" onClick={() => { setCreateError(""); setIsFormOpen(true); }} type="button">+ Create Flag</button>
       </div>
-      <FeatureFlagFilters environments={environments} selectedEnvironmentId={selectedEnvironmentId} onEnvironmentChange={setSelectedEnvironmentId} searchTerm={searchTerm} onSearchChange={setSearchTerm} status={status} onStatusChange={setStatus} />
+      <FeatureFlagFilters environments={environments} selectedEnvironmentId={selectedEnvironmentId} onEnvironmentChange={(value) => { setSelectedEnvironmentId(value); setPage(1); }} searchTerm={searchTerm} onSearchChange={(value) => { setSearchTerm(value); setPage(1); }} status={status} onStatusChange={(value) => { setStatus(value); setPage(1); }} />
       <div className="selected-environment-note">Viewing <strong>{selectedEnvironment?.name || "All environments"}</strong> · Summary reflects current search and status filters.</div>
       <FeatureFlagSummary total={filteredFlags.length} enabled={enabledCount} disabled={disabledCount} />
       {environmentFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No flags in this environment</h3><p>{selectedEnvironment?.name || "This environment"} does not have any feature flags yet.</p></div>
       ) : filteredFlags.length === 0 ? (
         <div className="feature-empty-state"><h3>No matching flags</h3><p>Try a different search term or status filter.</p></div>
-      ) : <FeatureFlagTable flags={filteredFlags} environments={environments} onViewDetails={openDetails} />}
+      ) : <><FeatureFlagTable flags={paginatedFlags} environments={environments} onViewDetails={openDetails} /><div className="feature-pagination"><span className="feature-result-count">Showing {resultStart}–{resultEnd} of {filteredFlags.length}</span>{totalPages > 1 && <nav aria-label="Feature flag pagination"><button className="feature-page-button" aria-label="Previous page" disabled={visiblePage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))} type="button">← Previous</button><div className="feature-page-numbers">{Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => <button className={`feature-page-button ${pageNumber === visiblePage ? "is-current" : ""}`} aria-current={pageNumber === visiblePage ? "page" : undefined} aria-label={`Go to page ${pageNumber}`} onClick={() => setPage(pageNumber)} type="button" key={pageNumber}>{pageNumber}</button>)}</div><button className="feature-page-button" aria-label="Next page" disabled={visiblePage === totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))} type="button">Next →</button></nav>}</div></>}
       {isFormOpen && <FeatureFlagForm environments={environments} selectedEnvironmentId={selectedEnvironmentId === ALL_ENVIRONMENTS ? "" : selectedEnvironmentId} isSubmitting={isCreating} onClose={() => !isCreating && setIsFormOpen(false)} onSubmit={handleCreateFlag} submitError={createError} />}
       {isDetailsOpen && <FeatureFlagDetailsModal flag={detailsFlag} environmentName={environments.find((environment) => environment.id === detailsFlag?.environment_id)?.name} isLoading={isDetailsLoading} error={detailsError} actionError={updateError} isSaving={isUpdating} targetingRules={selectedFlagRules} isRulesLoading={isRulesLoading} rulesError={rulesError} ruleActionError={ruleActionError} isDeletingRule={isRuleDeleting} onClose={closeDetails} onRetry={() => selectedFlagId && loadFlagDetails(selectedFlagId)} onRetryRules={loadTargetingRules} onEdit={() => { setUpdateError(""); setIsEditOpen(true); setIsDetailsOpen(false); }} onToggle={(enabled) => handleUpdateFlag(buildUpdatePayload(detailsFlag, enabled), `Flag ${enabled ? "enabled" : "disabled"}.`, false)} onAddRule={() => openRuleForm()} onEditRule={openRuleForm} onDeleteRule={handleDeleteRule} onDeleteFlag={() => { setFlagDeleteError(""); setDeletingFlag(detailsFlag); }} />}
       {isEditOpen && detailsFlag && <FeatureFlagEditForm flag={detailsFlag} isSubmitting={isUpdating} submitError={updateError} onClose={() => { if (!isUpdating) { setIsEditOpen(false); setIsDetailsOpen(true); } }} onSubmit={(payload) => handleUpdateFlag(payload, "Flag changes saved.")} />}
